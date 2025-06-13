@@ -1,0 +1,17 @@
+{
+  "name": "swipe-connect",
+  "version": "1.0.0",
+  "description": "A mobile job-finding app with swipe interface and LinkedIn integration",
+  "scripts": {
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npx react-native start\"",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "ios": "cd frontend && npx react-native run-ios",
+    "android": "cd frontend && npx react-native run-android"
+  },
+  "devDependencies": {
+    "@react-native/metro-config": "^0.80.0",
+    "concurrently": "^8.2.2",
+    "metro": "^0.82.4",
+    "metro-core": "^0.82.4"
+  }
+}
