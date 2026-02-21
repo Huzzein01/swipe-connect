@@ -2,14 +2,13 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
-// Auth Screens
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
-// Main Screens
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -22,56 +21,86 @@ const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
-  const { isDark } = useTheme();
+  const { theme } = useTheme();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
+          let iconName: keyof typeof Ionicons.glyphMap;
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Jobs') {
-            iconName = focused ? 'briefcase' : 'briefcase-outline';
+            iconName = focused ? 'heart' : 'heart-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
-          } else if (route.name === 'Settings') {
+          } else {
             iconName = focused ? 'settings' : 'settings-outline';
           }
 
-          return <Ionicons name={iconName as any} size={size} color={color} />;
+          return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#f4511e',
-        tabBarInactiveTintColor: isDark ? '#666' : '#999',
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.mutedForeground,
         tabBarStyle: {
-          backgroundColor: isDark ? '#1a1a1a' : '#fff',
-          borderTopColor: isDark ? '#333' : '#eee',
+          backgroundColor: theme.card,
+          borderTopColor: theme.border,
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+          paddingTop: 8,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600' as const,
         },
         headerStyle: {
-          backgroundColor: isDark ? '#1a1a1a' : '#fff',
+          backgroundColor: theme.background,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.border,
         },
-        headerTintColor: isDark ? '#fff' : '#000',
+        headerTintColor: theme.foreground,
+        headerTitleStyle: {
+          fontWeight: '700' as const,
+          fontSize: 18,
+        },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Jobs" component={JobSwipeScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
+      <Tab.Screen name="Jobs" component={JobSwipeScreen} options={{ headerShown: false, title: 'Discover' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+      <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
     </Tab.Navigator>
   );
 };
 
 const AppNavigator = () => {
-  const { isDark } = useTheme();
+  const { theme } = useTheme();
 
   return (
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: isDark ? '#1a1a1a' : '#fff',
+          backgroundColor: theme.background,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.border,
         },
-        headerTintColor: isDark ? '#fff' : '#000',
+        headerTintColor: theme.foreground,
+        headerTitleStyle: {
+          fontWeight: '700',
+          fontSize: 18,
+        },
+        headerBackTitleVisible: false,
+        cardStyle: {
+          backgroundColor: theme.background,
+        },
       }}
     >
       <Stack.Screen
@@ -102,15 +131,15 @@ const AppNavigator = () => {
       <Stack.Screen
         name="JobFilters"
         component={JobFiltersScreen}
-        options={{ title: 'Job Filters' }}
+        options={{ title: 'Job Preferences' }}
       />
       <Stack.Screen
         name="ResumeUpload"
         component={ResumeUploadScreen}
-        options={{ title: 'Upload Resume' }}
+        options={{ title: 'Resume' }}
       />
     </Stack.Navigator>
   );
 };
 
-export default AppNavigator; 
+export default AppNavigator;

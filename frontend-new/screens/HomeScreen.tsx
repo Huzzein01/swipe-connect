@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
@@ -8,10 +8,11 @@ import {
   ScrollView,
   Alert,
   Image,
-  TextInput,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 type HomeScreenProps = {
   navigation: any;
@@ -19,9 +20,7 @@ type HomeScreenProps = {
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { user, logout } = useAuth();
-  const { isDark } = useTheme();
-  const [isEditing, setIsEditing] = useState(false);
-  const [userName, setUserName] = useState(user?.displayName || '');
+  const { theme } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -32,206 +31,238 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
-  const handleUpdateProfile = async () => {
-    // TODO: Implement profile update functionality
-    Alert.alert('Success', 'Profile updated successfully!');
-    setIsEditing(false);
-  };
+  const quickActions = [
+    {
+      title: 'Start Swiping',
+      subtitle: 'Browse jobs that match you',
+      icon: 'heart' as const,
+      iconBg: `${theme.primary}18`,
+      iconColor: theme.primary,
+      onPress: () => navigation.navigate('Jobs'),
+    },
+    {
+      title: 'Upload Resume',
+      subtitle: 'Let AI parse your background',
+      icon: 'document-text' as const,
+      iconBg: `${theme.accent}18`,
+      iconColor: theme.accent,
+      onPress: () => navigation.navigate('ResumeUpload'),
+    },
+    {
+      title: 'Job Preferences',
+      subtitle: 'Refine your matching criteria',
+      icon: 'options' as const,
+      iconBg: `${theme.secondary}18`,
+      iconColor: theme.secondary,
+      onPress: () => navigation.navigate('JobFilters'),
+    },
+  ];
+
+  const stats = [
+    { label: 'Matches', value: '0', color: theme.primary },
+    { label: 'Applied', value: '0', color: theme.accent },
+    { label: 'Saved', value: '0', color: theme.secondary },
+  ];
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <ScrollView style={styles.scrollView}>
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          <View style={styles.profileImageContainer}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          <View style={styles.profileRow}>
             <Image
-              source={{ uri: 'https://via.placeholder.com/150' }}
-              style={styles.profileImage}
+              source={{ uri: user?.photoURL || 'https://via.placeholder.com/80' }}
+              style={[styles.avatar, { borderColor: theme.primary }]}
             />
-            <TouchableOpacity style={styles.editImageButton}>
-              <Text style={styles.editImageButtonText}>Change Photo</Text>
-            </TouchableOpacity>
+            <View style={styles.profileText}>
+              <Text style={[styles.greeting, { color: theme.mutedForeground }]}>
+                Welcome back,
+              </Text>
+              <Text style={[styles.userName, { color: theme.foreground }]}>
+                {user?.displayName || 'User'}
+              </Text>
+              <Text style={[styles.userEmail, { color: theme.mutedForeground }]}>
+                {user?.email}
+              </Text>
+            </View>
           </View>
+        </View>
 
-          <View style={styles.profileInfo}>
-            {isEditing ? (
-              <TextInput
-                style={[styles.input, isDark && styles.inputDark]}
-                value={userName}
-                onChangeText={setUserName}
-                placeholder="Enter your name"
-                placeholderTextColor={isDark ? '#666' : '#999'}
-              />
-            ) : (
-              <Text style={[styles.userName, isDark && styles.textDark]}>{user?.displayName}</Text>
-            )}
-            <Text style={[styles.userEmail, isDark && styles.textDark]}>{user?.email}</Text>
-          </View>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          {stats.map((stat, idx) => (
+            <View key={idx} style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
+              <Text style={[styles.statLabel, { color: theme.mutedForeground }]}>{stat.label}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Text style={styles.actionButtonText}>Settings</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionButtonText}>Help & Support</Text>
-          </TouchableOpacity>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>
+            Quick Actions
+          </Text>
+          {quickActions.map((action, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={action.onPress}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.actionIconBox, { backgroundColor: action.iconBg }]}>
+                <Ionicons name={action.icon} size={24} color={action.iconColor} />
+              </View>
+              <View style={styles.actionText}>
+                <Text style={[styles.actionTitle, { color: theme.foreground }]}>
+                  {action.title}
+                </Text>
+                <Text style={[styles.actionSubtitle, { color: theme.mutedForeground }]}>
+                  {action.subtitle}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Stats Section */}
-        <View style={styles.statsSection}>
-          <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Your Activity</Text>
-          <View style={styles.statsGrid}>
-            <View style={[styles.statItem, isDark && styles.statItemDark]}>
-              <Text style={[styles.statNumber, isDark && styles.textDark]}>0</Text>
-              <Text style={[styles.statLabel, isDark && styles.textDark]}>Connections</Text>
-            </View>
-            <View style={[styles.statItem, isDark && styles.statItemDark]}>
-              <Text style={[styles.statNumber, isDark && styles.textDark]}>0</Text>
-              <Text style={[styles.statLabel, isDark && styles.textDark]}>Messages</Text>
-            </View>
-            <View style={[styles.statItem, isDark && styles.statItemDark]}>
-              <Text style={[styles.statNumber, isDark && styles.textDark]}>0</Text>
-              <Text style={[styles.statLabel, isDark && styles.textDark]}>Events</Text>
-            </View>
+        {/* CTA Banner */}
+        <View style={styles.section}>
+          <View style={[styles.ctaBanner, { backgroundColor: `${theme.primary}10`, borderColor: `${theme.primary}30` }]}>
+            <Text style={[styles.ctaTitle, { color: theme.foreground }]}>
+              Ready to Swipe?
+            </Text>
+            <Text style={[styles.ctaSubtitle, { color: theme.mutedForeground }]}>
+              Your dream job is just a swipe away. Start matching now.
+            </Text>
+            <TouchableOpacity
+              style={[styles.ctaButton, { backgroundColor: theme.primary }]}
+              onPress={() => navigation.navigate('Jobs')}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.ctaButtonText, { color: theme.primaryForeground }]}>
+                Start Matching
+              </Text>
+              <Ionicons name="arrow-forward" size={16} color={theme.primaryForeground} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
+        {/* Logout */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.logoutButton, { borderColor: theme.destructive }]}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="log-out-outline" size={20} color={theme.destructive} />
+            <Text style={[styles.logoutText, { color: theme.destructive }]}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+  scrollView: { flex: 1 },
+  profileHeader: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.lg,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    marginRight: Spacing.lg,
+  },
+  profileText: { flex: 1 },
+  greeting: { fontSize: FontSize.sm },
+  userName: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginTop: 2 },
+  userEmail: { fontSize: FontSize.sm, marginTop: 2 },
+  statsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  statCard: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  containerDark: {
-    backgroundColor: '#1a1a1a',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  profileSection: {
-    padding: 20,
     alignItems: 'center',
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
   },
-  profileImageContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 10,
-  },
-  editImageButton: {
-    padding: 8,
-    backgroundColor: '#f4511e',
-    borderRadius: 20,
-  },
-  editImageButtonText: {
-    color: '#fff',
-    fontSize: 12,
-  },
-  profileInfo: {
-    alignItems: 'center',
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  userEmail: {
-    fontSize: 16,
-    color: '#666',
-  },
-  quickActions: {
-    padding: 20,
-  },
-  actionButton: {
-    backgroundColor: '#f4511e',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  statsSection: {
-    padding: 20,
+  statValue: { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold },
+  statLabel: { fontSize: FontSize.xs, marginTop: Spacing.xs },
+  section: {
+    paddingHorizontal: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    marginBottom: Spacing.md,
   },
-  statsGrid: {
+  actionCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statItem: {
-    flex: 1,
     alignItems: 'center',
-    padding: 15,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    marginHorizontal: 5,
-  },
-  statItemDark: {
-    backgroundColor: '#2a2a2a',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#f4511e',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-  },
-  logoutButton: {
-    margin: 20,
-    padding: 15,
-    backgroundColor: '#ff4444',
-    borderRadius: 8,
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  input: {
-    height: 40,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.xl,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    marginBottom: 10,
-    width: '100%',
-    backgroundColor: '#fff',
+    marginBottom: Spacing.md,
   },
-  inputDark: {
-    borderColor: '#333',
-    backgroundColor: '#2a2a2a',
-    color: '#fff',
+  actionIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
   },
-  textDark: {
-    color: '#fff',
+  actionText: { flex: 1 },
+  actionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  actionSubtitle: { fontSize: FontSize.sm, marginTop: 2 },
+  ctaBanner: {
+    borderRadius: BorderRadius['2xl'],
+    borderWidth: 1,
+    padding: Spacing['2xl'],
+    alignItems: 'center',
   },
+  ctaTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+  ctaSubtitle: {
+    fontSize: FontSize.sm,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+    lineHeight: 20,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing['2xl'],
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+  },
+  ctaButtonText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    gap: Spacing.sm,
+    marginBottom: Spacing['3xl'],
+  },
+  logoutText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
 });
 
-export default HomeScreen; 
+export default HomeScreen;

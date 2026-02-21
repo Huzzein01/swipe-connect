@@ -9,17 +9,19 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import * as DocumentPicker from 'expo-document-picker';
 import { Resume } from '../types/job';
+import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 type ResumeUploadScreenProps = {
   navigation: any;
 };
 
 const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
-  const { isDark } = useTheme();
+  const { theme } = useTheme();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [resume, setResume] = useState<Resume | null>(null);
@@ -27,7 +29,11 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        type: [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ],
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -40,10 +46,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
           parsedData: {
             name: 'John Doe',
             email: 'john@example.com',
-            location: {
-              city: 'San Francisco',
-              state: 'CA',
-            },
+            location: { city: 'San Francisco', state: 'CA' },
             education: [
               {
                 degree: 'Bachelor of Science',
@@ -66,7 +69,6 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
           },
           lastUpdated: new Date().toISOString(),
         };
-
         setResume(mockParsedResume);
         setIsLoading(false);
         Alert.alert('Success', 'Resume parsed successfully!');
@@ -79,93 +81,140 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
 
   const handleSave = async () => {
     if (!resume) return;
-
     setIsLoading(true);
     try {
-      // TODO: Implement resume saving
       await new Promise((resolve) => setTimeout(resolve, 1000));
       Alert.alert('Success', 'Resume saved successfully!');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save resume. Please try again.');
+      Alert.alert('Error', 'Failed to save resume.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <ScrollView style={styles.scrollView}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <Text style={[styles.title, isDark && styles.textDark]}>
-            Upload Your Resume
-          </Text>
-          <Text style={[styles.subtitle, isDark && styles.textDark]}>
-            We'll automatically extract your information and use it to apply for jobs
-          </Text>
+          {/* Header */}
+          <View style={styles.headerSection}>
+            <View style={[styles.headerIcon, { backgroundColor: `${theme.accent}15` }]}>
+              <Ionicons name="document-text" size={32} color={theme.accent} />
+            </View>
+            <Text style={[styles.title, { color: theme.foreground }]}>
+              Upload Your Resume
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
+              Our AI automatically extracts your skills, experience, and preferences for smarter matching.
+            </Text>
+          </View>
 
+          {/* Upload Area */}
           <TouchableOpacity
-            style={styles.uploadButton}
+            style={[styles.uploadArea, { borderColor: theme.primary, backgroundColor: `${theme.primary}08` }]}
             onPress={pickDocument}
             disabled={isLoading}
+            activeOpacity={0.7}
           >
-            <Text style={styles.uploadButtonText}>
+            <Ionicons name="cloud-upload-outline" size={40} color={theme.primary} />
+            <Text style={[styles.uploadTitle, { color: theme.foreground }]}>
               {resume ? 'Change Resume' : 'Select Resume'}
+            </Text>
+            <Text style={[styles.uploadHint, { color: theme.mutedForeground }]}>
+              PDF, DOC, or DOCX
             </Text>
           </TouchableOpacity>
 
+          {/* Loading */}
           {isLoading && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#f4511e" />
-              <Text style={[styles.loadingText, isDark && styles.textDark]}>
-                {resume ? 'Saving...' : 'Parsing Resume...'}
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={[styles.loadingText, { color: theme.mutedForeground }]}>
+                {resume ? 'Saving...' : 'Parsing Resume with AI...'}
               </Text>
             </View>
           )}
 
+          {/* Parsed Result */}
           {resume && (
-            <View style={styles.resumePreview}>
-              <Text style={[styles.previewTitle, isDark && styles.textDark]}>
-                Parsed Information
-              </Text>
-              <View style={styles.previewSection}>
-                <Text style={[styles.previewLabel, isDark && styles.textDark]}>Name</Text>
-                <Text style={[styles.previewValue, isDark && styles.textDark]}>
+            <View style={[styles.resultCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.resultHeader}>
+                <Ionicons name="checkmark-circle" size={20} color={theme.success} />
+                <Text style={[styles.resultTitle, { color: theme.foreground }]}>
+                  Parsed Information
+                </Text>
+              </View>
+
+              {/* Name */}
+              <View style={styles.resultField}>
+                <Text style={[styles.resultLabel, { color: theme.mutedForeground }]}>Name</Text>
+                <Text style={[styles.resultValue, { color: theme.foreground }]}>
                   {resume.parsedData.name}
                 </Text>
               </View>
-              <View style={styles.previewSection}>
-                <Text style={[styles.previewLabel, isDark && styles.textDark]}>Location</Text>
-                <Text style={[styles.previewValue, isDark && styles.textDark]}>
+
+              {/* Location */}
+              <View style={styles.resultField}>
+                <Text style={[styles.resultLabel, { color: theme.mutedForeground }]}>Location</Text>
+                <Text style={[styles.resultValue, { color: theme.foreground }]}>
                   {`${resume.parsedData.location.city}, ${resume.parsedData.location.state}`}
                 </Text>
               </View>
-              <View style={styles.previewSection}>
-                <Text style={[styles.previewLabel, isDark && styles.textDark]}>Skills</Text>
-                <View style={styles.skillsContainer}>
+
+              {/* Experience */}
+              {resume.parsedData.experience.length > 0 && (
+                <View style={styles.resultField}>
+                  <Text style={[styles.resultLabel, { color: theme.mutedForeground }]}>
+                    Latest Role
+                  </Text>
+                  <Text style={[styles.resultValue, { color: theme.foreground }]}>
+                    {resume.parsedData.experience[0].title} at {resume.parsedData.experience[0].company}
+                  </Text>
+                </View>
+              )}
+
+              {/* Skills */}
+              <View style={styles.resultField}>
+                <Text style={[styles.resultLabel, { color: theme.mutedForeground }]}>Skills</Text>
+                <View style={styles.skillsRow}>
                   {resume.parsedData.skills.map((skill, index) => (
-                    <View
-                      key={index}
-                      style={[styles.skillTag, isDark && styles.skillTagDark]}
-                    >
-                      <Text style={[styles.skillText, isDark && styles.textDark]}>
-                        {skill}
-                      </Text>
+                    <View key={index} style={[styles.skillTag, { backgroundColor: `${theme.primary}15` }]}>
+                      <Text style={[styles.skillTagText, { color: theme.primary }]}>{skill}</Text>
                     </View>
                   ))}
                 </View>
               </View>
+
+              {/* Save Button */}
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                onPress={handleSave}
+                disabled={isLoading}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.saveButtonText, { color: theme.primaryForeground }]}>
+                  Save Resume
+                </Text>
+                <Ionicons name="checkmark" size={18} color={theme.primaryForeground} />
+              </TouchableOpacity>
             </View>
           )}
 
-          {resume && (
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSave}
-              disabled={isLoading}
-            >
-              <Text style={styles.saveButtonText}>Save Resume</Text>
-            </TouchableOpacity>
+          {/* Info checklist */}
+          {!resume && (
+            <View style={styles.checklist}>
+              {[
+                'Automatic skill extraction',
+                'Experience level detection',
+                'Preference recommendation engine',
+              ].map((item, idx) => (
+                <View key={idx} style={styles.checkItem}>
+                  <Ionicons name="checkmark-circle" size={18} color={theme.accent} />
+                  <Text style={[styles.checkText, { color: theme.mutedForeground }]}>{item}</Text>
+                </View>
+              ))}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -174,103 +223,74 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+  container: { flex: 1 },
+  scrollView: { flex: 1 },
+  content: { padding: Spacing.xl },
+  headerSection: { alignItems: 'center', marginBottom: Spacing['3xl'] },
+  headerIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: BorderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
   },
-  containerDark: {
-    backgroundColor: '#1a1a1a',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
+  title: { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 30,
+    fontSize: FontSize.md,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: Spacing.lg,
   },
-  uploadButton: {
-    backgroundColor: '#f4511e',
-    padding: 15,
-    borderRadius: 8,
+  uploadArea: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: BorderRadius.xl,
+    paddingVertical: Spacing['4xl'],
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: Spacing['2xl'],
+    gap: Spacing.sm,
   },
-  uploadButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  uploadTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  uploadHint: { fontSize: FontSize.sm },
+  loadingContainer: { alignItems: 'center', marginVertical: Spacing['2xl'], gap: Spacing.md },
+  loadingText: { fontSize: FontSize.md },
+  resultCard: {
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    padding: Spacing.xl,
+    marginBottom: Spacing.xl,
   },
-  loadingContainer: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-  },
-  resumePreview: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 20,
-  },
-  previewTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  previewSection: {
-    marginBottom: 15,
-  },
-  previewLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 5,
-  },
-  previewValue: {
-    fontSize: 16,
-  },
-  skillsContainer: {
+  resultHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  skillTag: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-  },
-  skillTagDark: {
-    backgroundColor: '#333',
-  },
-  skillText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  saveButton: {
-    backgroundColor: '#f4511e',
-    padding: 15,
-    borderRadius: 8,
     alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl,
   },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  resultTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  resultField: { marginBottom: Spacing.lg },
+  resultLabel: { fontSize: FontSize.sm, marginBottom: Spacing.xs },
+  resultValue: { fontSize: FontSize.md, fontWeight: FontWeight.medium },
+  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  skillTag: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: BorderRadius.full,
   },
-  textDark: {
-    color: '#fff',
+  skillTagText: { fontSize: FontSize.xs, fontWeight: FontWeight.medium },
+  saveButton: {
+    flexDirection: 'row',
+    height: 52,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.lg,
+    gap: Spacing.sm,
   },
+  saveButtonText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  checklist: { gap: Spacing.md, marginTop: Spacing.lg },
+  checkItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  checkText: { fontSize: FontSize.sm },
 });
 
-export default ResumeUploadScreen; 
+export default ResumeUploadScreen;

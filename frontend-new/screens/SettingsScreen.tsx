@@ -9,11 +9,13 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 const SettingsScreen = () => {
-  const { themeMode, isDark, setThemeMode } = useTheme();
+  const { theme, themeMode, setThemeMode } = useTheme();
   const { user } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
@@ -28,15 +30,11 @@ const SettingsScreen = () => {
       'Delete Account',
       'Are you sure you want to delete your account? This action cannot be undone.',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            // TODO: Implement account deletion
             Alert.alert('Account Deleted', 'Your account has been deleted successfully.');
           },
         },
@@ -44,168 +42,220 @@ const SettingsScreen = () => {
     );
   };
 
+  const themeOptions: Array<{ label: string; value: 'light' | 'dark' | 'system'; icon: any }> = [
+    { label: 'Light', value: 'light', icon: 'sunny-outline' },
+    { label: 'Dark', value: 'dark', icon: 'moon-outline' },
+    { label: 'System', value: 'system', icon: 'phone-portrait-outline' },
+  ];
+
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <ScrollView style={styles.scrollView}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Display Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Display</Text>
-          <View style={styles.settingItem}>
-            <Text style={[styles.settingLabel, isDark && styles.textDark]}>Theme</Text>
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Appearance</Text>
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.settingLabel, { color: theme.foreground }]}>Theme</Text>
             <View style={styles.themeOptions}>
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  themeMode === 'light' && styles.selectedTheme,
-                  isDark && styles.themeOptionDark,
-                ]}
-                onPress={() => handleThemeChange('light')}
-              >
-                <Text style={[styles.themeText, isDark && styles.textDark]}>Light</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  themeMode === 'dark' && styles.selectedTheme,
-                  isDark && styles.themeOptionDark,
-                ]}
-                onPress={() => handleThemeChange('dark')}
-              >
-                <Text style={[styles.themeText, isDark && styles.textDark]}>Dark</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  themeMode === 'system' && styles.selectedTheme,
-                  isDark && styles.themeOptionDark,
-                ]}
-                onPress={() => handleThemeChange('system')}
-              >
-                <Text style={[styles.themeText, isDark && styles.textDark]}>System</Text>
-              </TouchableOpacity>
+              {themeOptions.map((opt) => {
+                const isSelected = themeMode === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[
+                      styles.themeOption,
+                      { backgroundColor: isSelected ? theme.primary : theme.muted },
+                    ]}
+                    onPress={() => handleThemeChange(opt.value)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={16}
+                      color={isSelected ? theme.primaryForeground : theme.foreground}
+                    />
+                    <Text style={[
+                      styles.themeText,
+                      { color: isSelected ? theme.primaryForeground : theme.foreground },
+                    ]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </View>
 
+        {/* Notifications Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Notifications</Text>
-          <View style={styles.settingItem}>
-            <Text style={[styles.settingLabel, isDark && styles.textDark]}>Push Notifications</Text>
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: '#767577', true: '#f4511e' }}
-              thumbColor={notifications ? '#fff' : '#f4f3f4'}
-            />
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Notifications</Text>
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowLeft}>
+                <View style={[styles.settingIconBox, { backgroundColor: `${theme.primary}15` }]}>
+                  <Ionicons name="notifications-outline" size={20} color={theme.primary} />
+                </View>
+                <Text style={[styles.settingLabel, { color: theme.foreground }]}>
+                  Push Notifications
+                </Text>
+              </View>
+              <Switch
+                value={notifications}
+                onValueChange={setNotifications}
+                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
+                thumbColor={notifications ? theme.primary : '#f4f3f4'}
+              />
+            </View>
           </View>
         </View>
 
+        {/* Privacy Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Privacy</Text>
-          <View style={styles.settingItem}>
-            <Text style={[styles.settingLabel, isDark && styles.textDark]}>Location Services</Text>
-            <Switch
-              value={locationServices}
-              onValueChange={setLocationServices}
-              trackColor={{ false: '#767577', true: '#f4511e' }}
-              thumbColor={locationServices ? '#fff' : '#f4f3f4'}
-            />
-          </View>
-          <View style={styles.settingItem}>
-            <Text style={[styles.settingLabel, isDark && styles.textDark]}>Biometric Authentication</Text>
-            <Switch
-              value={biometricAuth}
-              onValueChange={setBiometricAuth}
-              trackColor={{ false: '#767577', true: '#f4511e' }}
-              thumbColor={biometricAuth ? '#fff' : '#f4f3f4'}
-            />
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Privacy</Text>
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowLeft}>
+                <View style={[styles.settingIconBox, { backgroundColor: `${theme.accent}15` }]}>
+                  <Ionicons name="location-outline" size={20} color={theme.accent} />
+                </View>
+                <Text style={[styles.settingLabel, { color: theme.foreground }]}>
+                  Location Services
+                </Text>
+              </View>
+              <Switch
+                value={locationServices}
+                onValueChange={setLocationServices}
+                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
+                thumbColor={locationServices ? theme.primary : '#f4f3f4'}
+              />
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowLeft}>
+                <View style={[styles.settingIconBox, { backgroundColor: `${theme.secondary}15` }]}>
+                  <Ionicons name="finger-print-outline" size={20} color={theme.secondary} />
+                </View>
+                <Text style={[styles.settingLabel, { color: theme.foreground }]}>
+                  Biometric Auth
+                </Text>
+              </View>
+              <Switch
+                value={biometricAuth}
+                onValueChange={setBiometricAuth}
+                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
+                thumbColor={biometricAuth ? theme.primary : '#f4f3f4'}
+              />
+            </View>
           </View>
         </View>
 
+        {/* Account Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDark && styles.textDark]}>Account</Text>
-          <TouchableOpacity style={styles.dangerButton} onPress={handleDeleteAccount}>
-            <Text style={styles.dangerButtonText}>Delete Account</Text>
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Account</Text>
+          <TouchableOpacity
+            style={[styles.dangerButton, { borderColor: theme.destructive }]}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={20} color={theme.destructive} />
+            <Text style={[styles.dangerButtonText, { color: theme.destructive }]}>
+              Delete Account
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={[styles.versionText, isDark && styles.textDark]}>
-            Version 1.0.0
-          </Text>
-        </View>
+        {/* Version */}
+        <Text style={[styles.versionText, { color: theme.mutedForeground }]}>
+          SwipeConnect v1.0.0
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  containerDark: {
-    backgroundColor: '#1a1a1a',
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  scrollView: { flex: 1 },
   section: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    paddingHorizontal: Spacing.xl,
+    marginBottom: Spacing['2xl'],
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    marginBottom: Spacing.md,
+    marginTop: Spacing.sm,
   },
-  settingItem: {
+  sectionCard: {
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    padding: Spacing.lg,
+  },
+  settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: Spacing.sm,
+  },
+  settingRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  settingIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   settingLabel: {
-    fontSize: 16,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.medium,
   },
   themeOptions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
   },
   themeOption: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-  },
-  themeOptionDark: {
-    backgroundColor: '#333',
-  },
-  selectedTheme: {
-    backgroundColor: '#f4511e',
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.xs,
   },
   themeText: {
-    fontSize: 14,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+  },
+  divider: {
+    height: 1,
+    marginVertical: Spacing.sm,
   },
   dangerButton: {
-    backgroundColor: '#ff4444',
-    padding: 15,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    gap: Spacing.sm,
   },
   dangerButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
   },
   versionText: {
     textAlign: 'center',
-    color: '#666',
-    fontSize: 14,
-  },
-  textDark: {
-    color: '#fff',
+    fontSize: FontSize.sm,
+    marginBottom: Spacing['4xl'],
   },
 });
 
-export default SettingsScreen; 
+export default SettingsScreen;

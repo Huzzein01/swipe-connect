@@ -8,167 +8,165 @@ import {
   ScrollView,
   Linking,
 } from 'react-native';
-import { useTheme } from '../contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
+import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 type HelpScreenProps = {
   navigation: any;
 };
 
 const HelpScreen = ({ navigation }: HelpScreenProps) => {
-  const { isDark } = useTheme();
+  const { theme } = useTheme();
 
-  const helpItems = [
+  const helpSections = [
     {
-      title: 'How to Use SwipeConnect',
-      icon: 'help-circle-outline',
-      onPress: () => {
-        // TODO: Implement help content
-      },
+      title: 'Getting Started',
+      items: [
+        {
+          title: 'How to Use SwipeConnect',
+          icon: 'help-circle-outline' as const,
+          iconColor: theme.primary,
+          iconBg: `${theme.primary}15`,
+        },
+        {
+          title: 'Resume Upload Guide',
+          icon: 'document-text-outline' as const,
+          iconColor: theme.accent,
+          iconBg: `${theme.accent}15`,
+        },
+        {
+          title: 'Job Application Process',
+          icon: 'briefcase-outline' as const,
+          iconColor: theme.secondary,
+          iconBg: `${theme.secondary}15`,
+        },
+      ],
     },
     {
-      title: 'Resume Upload Guide',
-      icon: 'document-text-outline',
-      onPress: () => {
-        // TODO: Implement resume guide
-      },
-    },
-    {
-      title: 'Job Application Process',
-      icon: 'briefcase-outline',
-      onPress: () => {
-        // TODO: Implement application guide
-      },
-    },
-    {
-      title: 'Contact Support',
-      icon: 'mail-outline',
-      onPress: () => {
-        Linking.openURL('mailto:support@swipeconnect.com');
-      },
-    },
-    {
-      title: 'Privacy Policy',
-      icon: 'shield-outline',
-      onPress: () => {
-        // TODO: Implement privacy policy
-      },
-    },
-    {
-      title: 'Terms of Service',
-      icon: 'document-outline',
-      onPress: () => {
-        // TODO: Implement terms of service
-      },
+      title: 'Support',
+      items: [
+        {
+          title: 'Contact Support',
+          icon: 'mail-outline' as const,
+          iconColor: theme.primary,
+          iconBg: `${theme.primary}15`,
+          onPress: () => Linking.openURL('mailto:support@swipeconnect.com'),
+        },
+        {
+          title: 'Privacy Policy',
+          icon: 'shield-outline' as const,
+          iconColor: theme.accent,
+          iconBg: `${theme.accent}15`,
+        },
+        {
+          title: 'Terms of Service',
+          icon: 'document-outline' as const,
+          iconColor: theme.secondary,
+          iconBg: `${theme.secondary}15`,
+        },
+      ],
     },
   ];
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <ScrollView style={styles.scrollView}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, isDark && styles.textDark]}>
-            Help & Support
-          </Text>
-          <Text style={[styles.subtitle, isDark && styles.textDark]}>
+          <View style={[styles.headerIcon, { backgroundColor: `${theme.warning}15` }]}>
+            <Ionicons name="help-buoy" size={32} color={theme.warning} />
+          </View>
+          <Text style={[styles.title, { color: theme.foreground }]}>Help & Support</Text>
+          <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
             Find answers to common questions and get support
           </Text>
         </View>
 
-        <View style={styles.menuContainer}>
-          {helpItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.menuItem, isDark && styles.menuItemDark]}
-              onPress={item.onPress}
-            >
-              <View style={styles.menuItemLeft}>
-                <Ionicons
-                  name={item.icon as any}
-                  size={24}
-                  color={isDark ? '#fff' : '#666'}
-                />
-                <Text style={[styles.menuItemText, isDark && styles.textDark]}>
-                  {item.title}
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={24}
-                color={isDark ? '#666' : '#999'}
-              />
-            </TouchableOpacity>
-          ))}
-        </View>
+        {helpSections.map((section, sIdx) => (
+          <View key={sIdx} style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.foreground }]}>{section.title}</Text>
+            <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              {section.items.map((item, iIdx) => (
+                <React.Fragment key={iIdx}>
+                  {iIdx > 0 && <View style={[styles.divider, { backgroundColor: theme.border }]} />}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={item.onPress}
+                    activeOpacity={0.6}
+                  >
+                    <View style={[styles.menuIconBox, { backgroundColor: item.iconBg }]}>
+                      <Ionicons name={item.icon} size={22} color={item.iconColor} />
+                    </View>
+                    <Text style={[styles.menuItemText, { color: theme.foreground }]}>
+                      {item.title}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </View>
+          </View>
+        ))}
 
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, isDark && styles.textDark]}>
-            Version 1.0.0
-          </Text>
-        </View>
+        <Text style={[styles.versionText, { color: theme.mutedForeground }]}>
+          SwipeConnect v1.0.0
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  containerDark: {
-    backgroundColor: '#1a1a1a',
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  scrollView: { flex: 1 },
   header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing['3xl'],
+    paddingBottom: Spacing.xl,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
+  headerIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: BorderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
+  title: { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+  subtitle: { fontSize: FontSize.md, textAlign: 'center' },
+  section: { paddingHorizontal: Spacing.xl, marginBottom: Spacing.xl },
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    marginBottom: Spacing.md,
   },
-  menuContainer: {
-    padding: 20,
+  sectionCard: {
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    padding: Spacing.lg,
   },
-  menuItemDark: {
-    borderBottomColor: '#333',
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
+  menuIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
   },
-  menuItemText: {
-    fontSize: 16,
-    marginLeft: 15,
-  },
-  footer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  textDark: {
-    color: '#fff',
+  menuItemText: { flex: 1, fontSize: FontSize.md, fontWeight: FontWeight.medium },
+  divider: { height: 1, marginLeft: 76 },
+  versionText: {
+    textAlign: 'center',
+    fontSize: FontSize.sm,
+    marginVertical: Spacing['3xl'],
   },
 });
 
-export default HelpScreen; 
+export default HelpScreen;

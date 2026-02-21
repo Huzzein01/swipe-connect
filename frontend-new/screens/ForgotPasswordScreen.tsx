@@ -7,16 +7,23 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 type ForgotPasswordScreenProps = {
   navigation: any;
 };
 
 const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) => {
-  const { isDark } = useTheme();
+  const { theme, isDark } = useTheme();
   const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +33,6 @@ const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) => {
       Alert.alert('Error', 'Please enter your email address');
       return;
     }
-
     setIsLoading(true);
     try {
       await resetPassword(email);
@@ -43,108 +49,125 @@ const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <View style={styles.content}>
-        <Text style={[styles.title, isDark && styles.textDark]}>
-          Reset Password
-        </Text>
-        <Text style={[styles.subtitle, isDark && styles.textDark]}>
-          Enter your email address and we'll send you a link to reset your password
-        </Text>
-
-        <TextInput
-          style={[styles.input, isDark && styles.inputDark]}
-          placeholder="Email"
-          placeholderTextColor={isDark ? '#666' : '#999'}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleResetPassword}
-          disabled={isLoading}
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <Text style={styles.buttonText}>
-            {isLoading ? 'Sending...' : 'Send Reset Link'}
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.content}>
+            {/* Logo */}
+            <View style={styles.logoRow}>
+              <View style={[styles.iconCircle, { backgroundColor: `${theme.primary}15` }]}>
+                <Ionicons name="lock-open-outline" size={32} color={theme.primary} />
+              </View>
+            </View>
 
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={[styles.backButtonText, isDark && styles.textDark]}>
-            Back to Login
-          </Text>
-        </TouchableOpacity>
-      </View>
+            {/* Card */}
+            <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.headerSection}>
+                <Text style={[styles.title, { color: theme.foreground }]}>Reset Password</Text>
+                <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
+                  Enter your email address and we'll send you a link to reset your password
+                </Text>
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.label, { color: theme.foreground }]}>Email Address</Text>
+                <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
+                  <Ionicons name="mail-outline" size={20} color={theme.mutedForeground} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { color: theme.foreground }]}
+                    placeholder="you@example.com"
+                    placeholderTextColor={theme.mutedForeground}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    editable={!isLoading}
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: theme.primary }, isLoading && styles.buttonDisabled]}
+                onPress={handleResetPassword}
+                disabled={isLoading}
+                activeOpacity={0.85}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={theme.primaryForeground} />
+                ) : (
+                  <View style={styles.buttonContent}>
+                    <Text style={[styles.primaryButtonText, { color: theme.primaryForeground }]}>
+                      Send Reset Link
+                    </Text>
+                    <Ionicons name="arrow-forward" size={18} color={theme.primaryForeground} />
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.backRow}
+                onPress={() => navigation.goBack()}
+              >
+                <Ionicons name="arrow-back" size={16} color={theme.mutedForeground} />
+                <Text style={[styles.backText, { color: theme.mutedForeground }]}>
+                  Back to Login
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  containerDark: {
-    backgroundColor: '#1a1a1a',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
+  container: { flex: 1 },
+  flex: { flex: 1 },
+  content: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.xl },
+  logoRow: { alignItems: 'center', marginBottom: Spacing['3xl'] },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 30,
-  },
-  input: {
-    height: 50,
+  card: { borderRadius: BorderRadius['2xl'], borderWidth: 1, padding: Spacing['3xl'] },
+  headerSection: { alignItems: 'center', marginBottom: Spacing['3xl'] },
+  title: { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+  subtitle: { fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 },
+  fieldGroup: { marginBottom: Spacing.xl },
+  label: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, marginBottom: Spacing.sm },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    fontSize: 16,
-    marginBottom: 20,
-    backgroundColor: '#fff',
+    borderRadius: BorderRadius.lg,
+    height: 48,
   },
-  inputDark: {
-    borderColor: '#333',
-    backgroundColor: '#2a2a2a',
-    color: '#fff',
-  },
-  button: {
-    backgroundColor: '#f4511e',
-    padding: 15,
-    borderRadius: 8,
+  inputIcon: { marginLeft: Spacing.md },
+  input: { flex: 1, height: '100%', paddingHorizontal: Spacing.md, fontSize: FontSize.md },
+  primaryButton: {
+    height: 52,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  backButton: {
-    marginTop: 20,
+  buttonDisabled: { opacity: 0.7 },
+  buttonContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  primaryButtonText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  backRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing['2xl'],
+    gap: Spacing.xs,
   },
-  backButtonText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  textDark: {
-    color: '#fff',
-  },
+  backText: { fontSize: FontSize.md },
 });
 
-export default ForgotPasswordScreen; 
+export default ForgotPasswordScreen;
