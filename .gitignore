@@ -4,6 +4,10 @@ dist
 .DS_Store
 *.log
 .expo
-ios/Pods
-android/.gradle
-android/app/build
+
+# Native build outputs (managed by Expo prebuild)
+/android
+/ios
+frontend-new/ios/Pods
+frontend-new/android/.gradle
+frontend-new/android/app/build
