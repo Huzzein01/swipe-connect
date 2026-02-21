@@ -37,14 +37,14 @@ export const getProfile = async (req: Request, res: Response, next: NextFunction
 
 export const updatePreferences = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { industries, roles, locations, salaryRange } = req.body;
+    const { jobTypes, locations, experienceLevel, salaryRange } = req.body;
     const user = await User.findByIdAndUpdate(
       req.user?.id,
       {
         $set: {
-          'preferences.industries': industries,
-          'preferences.roles': roles,
+          'preferences.jobTypes': jobTypes,
           'preferences.locations': locations,
+          'preferences.experienceLevel': experienceLevel,
           'preferences.salaryRange': salaryRange,
         },
       },

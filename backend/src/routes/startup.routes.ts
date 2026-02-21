@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { authenticate } from '../middleware/auth.middleware';
 import Startup from '../models/Startup';
 import User from '../models/User';
 import { IUser } from '../models/User';
@@ -7,7 +7,7 @@ import { IUser } from '../models/User';
 const router = express.Router();
 
 // Get startups for swiping
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const startups = await Startup.find({ isActive: true })
       .select('-__v')
@@ -20,7 +20,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Swipe on a startup
-router.post('/:startupId/swipe', authenticateToken, async (req, res) => {
+router.post('/:startupId/swipe', authenticate, async (req, res) => {
   try {
     const { startupId } = req.params;
     const { action } = req.body;
@@ -45,7 +45,7 @@ router.post('/:startupId/swipe', authenticateToken, async (req, res) => {
 });
 
 // Get user's startup preferences
-router.get('/preferences', authenticateToken, async (req, res) => {
+router.get('/preferences', authenticate, async (req, res) => {
   try {
     const user = req.user as IUser;
     const userWithPreferences = await User.findById(user._id)

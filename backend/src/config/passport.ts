@@ -8,30 +8,32 @@ passport.use(
       clientID: process.env.LINKEDIN_CLIENT_ID!,
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
       callbackURL: process.env.LINKEDIN_CALLBACK_URL!,
-      scope: ['r_emailaddress', 'r_liteprofile'],
+      scope: ['openid', 'profile', 'email'],
     },
-    async (accessToken, refreshToken, profile, done) => {
+    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
-        // Check if user already exists
-        let user = await User.findOne({ linkedinId: profile.id });
+        let user = await User.findOne({ linkedInId: profile.id });
 
         if (!user) {
-          // Create new user if doesn't exist
+          const firstName = profile.name?.givenName || '';
+          const lastName = profile.name?.familyName || '';
           user = await User.create({
-            linkedinId: profile.id,
+            linkedInId: profile.id,
             email: profile.emails?.[0]?.value,
-            firstName: profile.name?.givenName,
-            lastName: profile.name?.familyName,
+            name: `${firstName} ${lastName}`.trim(),
+            firstName,
+            lastName,
             profilePicture: profile.photos?.[0]?.value,
-            headline: profile._json.headline,
+            headline: profile._json?.headline,
             preferences: {
-              industries: [],
-              roles: [],
+              jobTypes: [],
               locations: [],
+              experienceLevel: '',
               salaryRange: {
                 min: 0,
                 max: 0,
               },
+              startups: [],
             },
           });
         }
