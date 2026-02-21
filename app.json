@@ -1,0 +1,8 @@
+{
+  "ios": {
+    "bundleIdentifier": "com.anonymous.swipe-connect"
+  },
+  "android": {
+    "package": "com.anonymous.swipeconnect"
+  }
+}

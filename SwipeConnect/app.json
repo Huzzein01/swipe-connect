@@ -1,7 +1,0 @@
-{
-  "name": "SwipeConnect",
-  "slug": "SwipeConnect",
-  "ios": {
-    "bundleIdentifier": "com.anonymous.SwipeConnect"
-  }
-}
