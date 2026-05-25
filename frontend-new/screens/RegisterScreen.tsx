@@ -8,8 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  Keyboard,
-  TouchableWithoutFeedback,
   Alert,
   ActivityIndicator,
   ScrollView,
@@ -20,6 +18,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { isValidEmail, getPasswordStrength, getPasswordStrengthColor } from '../utils/validation';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 import Logo from '../components/Logo';
+import KeyboardDismissWrapper from '../components/KeyboardDismissWrapper';
 
 type RegisterScreenProps = {
   navigation: any;
@@ -96,7 +95,7 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardDismissWrapper>
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -310,7 +309,7 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      </KeyboardDismissWrapper>
     </SafeAreaView>
   );
 };

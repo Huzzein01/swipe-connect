@@ -10,13 +10,12 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
+import KeyboardDismissWrapper from '../components/KeyboardDismissWrapper';
 
 type ForgotPasswordScreenProps = {
   navigation: any;
@@ -50,7 +49,7 @@ const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardDismissWrapper>
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -119,7 +118,7 @@ const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) => {
             </View>
           </View>
         </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      </KeyboardDismissWrapper>
     </SafeAreaView>
   );
 };

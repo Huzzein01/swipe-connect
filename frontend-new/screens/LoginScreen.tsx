@@ -8,8 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  Keyboard,
-  TouchableWithoutFeedback,
   Alert,
   ActivityIndicator,
   Linking,
@@ -20,6 +18,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { jobService } from '../services/jobService';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 import Logo from '../components/Logo';
+import KeyboardDismissWrapper from '../components/KeyboardDismissWrapper';
 
 type LoginScreenProps = {
   navigation: any;
@@ -65,7 +64,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardDismissWrapper>
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -217,7 +216,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
             </Text>
           </View>
         </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+      </KeyboardDismissWrapper>
     </SafeAreaView>
   );
 };
