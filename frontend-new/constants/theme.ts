@@ -81,7 +81,7 @@ export const FontWeight = {
   extrabold: '800' as const,
 };
 
-export type ColorScheme = typeof Colors.light;
+export type ColorScheme = Record<keyof typeof Colors.light, string>;
 
 export const getColors = (isDark: boolean): ColorScheme =>
   isDark ? Colors.dark : Colors.light;

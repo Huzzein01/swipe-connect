@@ -1,7 +1,7 @@
 import { Job, Resume } from '../types/job';
 import axios from 'axios';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export const advancedAiService = {
   // Analyze resume for improvement suggestions

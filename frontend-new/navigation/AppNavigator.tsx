@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -81,6 +82,7 @@ const MainTabs = () => {
 
 const AppNavigator = () => {
   const { theme } = useTheme();
+  const { user } = useAuth();
 
   return (
     <Stack.Navigator
@@ -97,47 +99,53 @@ const AppNavigator = () => {
           fontWeight: '700',
           fontSize: 18,
         },
-        headerBackTitleVisible: false,
         cardStyle: {
           backgroundColor: theme.background,
         },
       }}
     >
-      <Stack.Screen
-        name="Login"
-        component={LoginScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Register"
-        component={RegisterScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="ForgotPassword"
-        component={ForgotPasswordScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Main"
-        component={MainTabs}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Help"
-        component={HelpScreen}
-        options={{ title: 'Help & Support' }}
-      />
-      <Stack.Screen
-        name="JobFilters"
-        component={JobFiltersScreen}
-        options={{ title: 'Job Preferences' }}
-      />
-      <Stack.Screen
-        name="ResumeUpload"
-        component={ResumeUploadScreen}
-        options={{ title: 'Resume' }}
-      />
+      {user ? (
+        <>
+          <Stack.Screen
+            name="Main"
+            component={MainTabs}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Help"
+            component={HelpScreen}
+            options={{ title: 'Help & Support' }}
+          />
+          <Stack.Screen
+            name="JobFilters"
+            component={JobFiltersScreen}
+            options={{ title: 'Job Preferences' }}
+          />
+          <Stack.Screen
+            name="ResumeUpload"
+            component={ResumeUploadScreen}
+            options={{ title: 'Resume' }}
+          />
+        </>
+      ) : (
+        <>
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Register"
+            component={RegisterScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ForgotPassword"
+            component={ForgotPasswordScreen}
+            options={{ headerShown: false }}
+          />
+        </>
+      )}
     </Stack.Navigator>
   );
 };

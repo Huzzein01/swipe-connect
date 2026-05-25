@@ -1,9 +1,16 @@
 import passport from 'passport';
 import { Strategy as LinkedInStrategy } from 'passport-linkedin-oauth2';
+import mongoose from 'mongoose';
 import User from '../models/User';
 
-passport.use(
-  new LinkedInStrategy(
+const hasLinkedInConfig =
+  process.env.LINKEDIN_CLIENT_ID &&
+  process.env.LINKEDIN_CLIENT_SECRET &&
+  process.env.LINKEDIN_CALLBACK_URL;
+
+if (hasLinkedInConfig) {
+  passport.use(
+    new LinkedInStrategy(
     {
       clientID: process.env.LINKEDIN_CLIENT_ID!,
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
@@ -12,14 +19,29 @@ passport.use(
     },
     async (accessToken: string, refreshToken: string, profile: any, done: any) => {
       try {
+        const firstName = profile.name?.givenName || '';
+        const lastName = profile.name?.familyName || '';
+        const email = profile.emails?.[0]?.value || `${profile.id}@linkedin.local`;
+        const fallbackUser = {
+          _id: `linkedin-${profile.id}`,
+          email,
+          name: `${firstName} ${lastName}`.trim() || 'LinkedIn Member',
+          firstName,
+          lastName,
+          linkedInId: profile.id,
+          photoURL: profile.photos?.[0]?.value,
+        };
+
+        if (mongoose.connection.readyState !== 1) {
+          return done(null, fallbackUser);
+        }
+
         let user = await User.findOne({ linkedInId: profile.id });
 
         if (!user) {
-          const firstName = profile.name?.givenName || '';
-          const lastName = profile.name?.familyName || '';
           user = await User.create({
             linkedInId: profile.id,
-            email: profile.emails?.[0]?.value,
+            email,
             name: `${firstName} ${lastName}`.trim(),
             firstName,
             lastName,
@@ -43,8 +65,11 @@ passport.use(
         return done(error as Error);
       }
     }
-  )
-);
+    )
+  );
+} else {
+  console.warn('LinkedIn OAuth is disabled until LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, and LINKEDIN_CALLBACK_URL are set.');
+}
 
 passport.serializeUser((user: any, done) => {
   done(null, user.id);

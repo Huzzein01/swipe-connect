@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,8 +8,10 @@ import {
   ScrollView,
   Switch,
   TextInput,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useDemo } from '../contexts/DemoContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { UserPreferences } from '../types/job';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
@@ -20,15 +22,16 @@ type JobFiltersScreenProps = {
 
 const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
   const { theme, isDark } = useTheme();
-  const [preferences, setPreferences] = useState<UserPreferences>({
-    industries: [],
-    jobTypes: ['full-time'],
-    location: { city: '', state: '', radius: 50 },
-    remote: true,
-    experienceLevel: 'mid',
-  });
+  const { preferences: savedPreferences, savePreferences } = useDemo();
+  const [preferences, setPreferences] = useState<UserPreferences>(savedPreferences);
 
-  const handleSave = () => {
+  useEffect(() => {
+    setPreferences(savedPreferences);
+  }, [savedPreferences]);
+
+  const handleSave = async () => {
+    await savePreferences(preferences);
+    Alert.alert('Preferences saved', 'Your preview job preferences have been updated.');
     navigation.goBack();
   };
 

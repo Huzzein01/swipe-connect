@@ -10,13 +10,15 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useDemo } from '../contexts/DemoContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 const SettingsScreen = () => {
   const { theme, themeMode, setThemeMode } = useTheme();
-  const { user } = useAuth();
+  const { logout } = useAuth();
+  const { resetDemo } = useDemo();
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
   const [biometricAuth, setBiometricAuth] = useState(false);
@@ -27,15 +29,16 @@ const SettingsScreen = () => {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone.',
+      'Reset Demo Account',
+      'This clears demo jobs, resume, and preferences, then signs out of the preview account.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Reset',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Account Deleted', 'Your account has been deleted successfully.');
+          onPress: async () => {
+            await resetDemo();
+            await logout();
           },
         },
       ]
@@ -162,7 +165,7 @@ const SettingsScreen = () => {
           >
             <Ionicons name="trash-outline" size={20} color={theme.destructive} />
             <Text style={[styles.dangerButtonText, { color: theme.destructive }]}>
-              Delete Account
+              Reset Demo Account
             </Text>
           </TouchableOpacity>
         </View>

@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -20,6 +21,13 @@ type ProfileScreenProps = {
 const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
   const { theme } = useTheme();
   const { user } = useAuth();
+
+  const handleEditProfile = () => {
+    Alert.alert(
+      'Profile ready',
+      'This preview profile is active. Account editing can be connected to Firebase or your backend next.'
+    );
+  };
 
   const menuSections = [
     {
@@ -84,6 +92,7 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
 
           <TouchableOpacity
             style={[styles.editButton, { backgroundColor: `${theme.primary}15` }]}
+            onPress={handleEditProfile}
             activeOpacity={0.7}
           >
             <Ionicons name="pencil-outline" size={16} color={theme.primary} />

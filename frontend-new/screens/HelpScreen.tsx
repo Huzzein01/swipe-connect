@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   Linking,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -16,10 +17,22 @@ type HelpScreenProps = {
   navigation: any;
 };
 
+type HelpItem = {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
+  iconBg: string;
+  onPress?: () => void;
+};
+
 const HelpScreen = ({ navigation }: HelpScreenProps) => {
   const { theme } = useTheme();
 
-  const helpSections = [
+  const showHelpTopic = (title: string) => {
+    Alert.alert(title, 'This guide is available in preview mode. Full help content can be connected next.');
+  };
+
+  const helpSections: Array<{ title: string; items: HelpItem[] }> = [
     {
       title: 'Getting Started',
       items: [
@@ -28,18 +41,21 @@ const HelpScreen = ({ navigation }: HelpScreenProps) => {
           icon: 'help-circle-outline' as const,
           iconColor: theme.primary,
           iconBg: `${theme.primary}15`,
+          onPress: () => showHelpTopic('How to Use SwipeConnect'),
         },
         {
           title: 'Resume Upload Guide',
           icon: 'document-text-outline' as const,
           iconColor: theme.accent,
           iconBg: `${theme.accent}15`,
+          onPress: () => showHelpTopic('Resume Upload Guide'),
         },
         {
           title: 'Job Application Process',
           icon: 'briefcase-outline' as const,
           iconColor: theme.secondary,
           iconBg: `${theme.secondary}15`,
+          onPress: () => showHelpTopic('Job Application Process'),
         },
       ],
     },
@@ -58,12 +74,14 @@ const HelpScreen = ({ navigation }: HelpScreenProps) => {
           icon: 'shield-outline' as const,
           iconColor: theme.accent,
           iconBg: `${theme.accent}15`,
+          onPress: () => showHelpTopic('Privacy Policy'),
         },
         {
           title: 'Terms of Service',
           icon: 'document-outline' as const,
           iconColor: theme.secondary,
           iconBg: `${theme.secondary}15`,
+          onPress: () => showHelpTopic('Terms of Service'),
         },
       ],
     },

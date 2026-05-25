@@ -12,5 +12,6 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true
-  }
+  },
+  "exclude": ["dist", "web-build", "node_modules"]
 }

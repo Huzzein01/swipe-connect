@@ -17,6 +17,16 @@ export interface Job {
   remote: boolean;
   benefits?: string[];
   companyLogo?: string;
+  source?: {
+    name: string;
+    url: string;
+    id: string;
+  };
+  applicationUrl?: string;
+  matchScore?: number;
+  companyStage?: string;
+  workStyle?: string;
+  whyMatch?: string[];
 }
 
 export interface UserPreferences {
@@ -65,4 +75,24 @@ export interface Resume {
     certifications?: string[];
   };
   lastUpdated: string;
-} 
+}
+
+export interface ApplicationRecord {
+  id: string;
+  job: Job;
+  applicant: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  };
+  status: 'queued' | 'needs-review' | 'submitted';
+  confirmationMessage: string;
+  email?: {
+    sent: boolean;
+    id?: string;
+    reason?: string;
+  };
+  createdAt: string;
+  nextStepUrl: string;
+}

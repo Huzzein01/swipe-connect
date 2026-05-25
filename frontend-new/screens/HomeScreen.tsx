@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemo } from '../contexts/DemoContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
@@ -20,12 +21,12 @@ type HomeScreenProps = {
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { user, logout } = useAuth();
+  const { highFitJobs, stats, resume } = useDemo();
   const { theme } = useTheme();
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch (error) {
       Alert.alert('Error', 'Failed to logout. Please try again.');
     }
@@ -33,131 +34,158 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   const quickActions = [
     {
-      title: 'Start Swiping',
-      subtitle: 'Browse jobs that match you',
+      title: 'Discover jobs',
+      subtitle: 'Review curated roles one card at a time',
       icon: 'heart' as const,
-      iconBg: `${theme.primary}18`,
-      iconColor: theme.primary,
+      color: theme.primary,
       onPress: () => navigation.navigate('Jobs'),
     },
     {
-      title: 'Upload Resume',
-      subtitle: 'Let AI parse your background',
-      icon: 'document-text' as const,
-      iconBg: `${theme.accent}18`,
-      iconColor: theme.accent,
-      onPress: () => navigation.navigate('ResumeUpload'),
+      title: 'Tune preferences',
+      subtitle: 'Location, seniority, remote, and role types',
+      icon: 'options' as const,
+      color: theme.secondary,
+      onPress: () => navigation.navigate('JobFilters'),
     },
     {
-      title: 'Job Preferences',
-      subtitle: 'Refine your matching criteria',
-      icon: 'options' as const,
-      iconBg: `${theme.secondary}18`,
-      iconColor: theme.secondary,
-      onPress: () => navigation.navigate('JobFilters'),
+      title: 'Improve resume',
+      subtitle: 'Upload once and power smarter matching',
+      icon: 'document-text' as const,
+      color: theme.accent,
+      onPress: () => navigation.navigate('ResumeUpload'),
     },
   ];
 
-  const stats = [
-    { label: 'Matches', value: '0', color: theme.primary },
-    { label: 'Applied', value: '0', color: theme.accent },
-    { label: 'Saved', value: '0', color: theme.secondary },
+  const pipeline = [
+    { label: 'Matches', value: stats.matches.toString(), icon: 'sparkles-outline' as const },
+    { label: 'Applied', value: stats.applied.toString(), icon: 'send-outline' as const },
+    { label: 'Saved', value: stats.saved.toString(), icon: 'bookmark-outline' as const },
   ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <View style={styles.profileRow}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.topBar}>
+          <View style={styles.identity}>
             <Image
-              source={{ uri: user?.photoURL || 'https://via.placeholder.com/80' }}
-              style={[styles.avatar, { borderColor: theme.primary }]}
+              source={{ uri: user?.photoURL || 'https://via.placeholder.com/96' }}
+              style={[styles.avatar, { borderColor: theme.border }]}
             />
-            <View style={styles.profileText}>
-              <Text style={[styles.greeting, { color: theme.mutedForeground }]}>
-                Welcome back,
-              </Text>
-              <Text style={[styles.userName, { color: theme.foreground }]}>
-                {user?.displayName || 'User'}
-              </Text>
-              <Text style={[styles.userEmail, { color: theme.mutedForeground }]}>
-                {user?.email}
+            <View style={styles.identityText}>
+              <Text style={[styles.eyebrow, { color: theme.mutedForeground }]}>SwipeConnect</Text>
+              <Text style={[styles.name, { color: theme.foreground }]} numberOfLines={1}>
+                {user?.displayName || 'Welcome back'}
               </Text>
             </View>
           </View>
-        </View>
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          {stats.map((stat, idx) => (
-            <View key={idx} style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
-              <Text style={[styles.statLabel, { color: theme.mutedForeground }]}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>
-            Quick Actions
-          </Text>
-          {quickActions.map((action, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={action.onPress}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.actionIconBox, { backgroundColor: action.iconBg }]}>
-                <Ionicons name={action.icon} size={24} color={action.iconColor} />
-              </View>
-              <View style={styles.actionText}>
-                <Text style={[styles.actionTitle, { color: theme.foreground }]}>
-                  {action.title}
-                </Text>
-                <Text style={[styles.actionSubtitle, { color: theme.mutedForeground }]}>
-                  {action.subtitle}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* CTA Banner */}
-        <View style={styles.section}>
-          <View style={[styles.ctaBanner, { backgroundColor: `${theme.primary}10`, borderColor: `${theme.primary}30` }]}>
-            <Text style={[styles.ctaTitle, { color: theme.foreground }]}>
-              Ready to Swipe?
-            </Text>
-            <Text style={[styles.ctaSubtitle, { color: theme.mutedForeground }]}>
-              Your dream job is just a swipe away. Start matching now.
-            </Text>
-            <TouchableOpacity
-              style={[styles.ctaButton, { backgroundColor: theme.primary }]}
-              onPress={() => navigation.navigate('Jobs')}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.ctaButtonText, { color: theme.primaryForeground }]}>
-                Start Matching
-              </Text>
-              <Ionicons name="arrow-forward" size={16} color={theme.primaryForeground} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Logout */}
-        <View style={styles.section}>
           <TouchableOpacity
-            style={[styles.logoutButton, { borderColor: theme.destructive }]}
+            style={[styles.iconButton, { backgroundColor: theme.card, borderColor: theme.border }]}
             onPress={handleLogout}
-            activeOpacity={0.7}
+            activeOpacity={0.75}
           >
-            <Ionicons name="log-out-outline" size={20} color={theme.destructive} />
-            <Text style={[styles.logoutText, { color: theme.destructive }]}>Sign Out</Text>
+            <Ionicons name="log-out-outline" size={20} color={theme.mutedForeground} />
           </TouchableOpacity>
+        </View>
+
+        <View style={[styles.heroPanel, { backgroundColor: theme.foreground }]}>
+          <View style={styles.heroCopy}>
+            <Text style={[styles.heroKicker, { color: theme.accent }]}>Today's shortlist</Text>
+            <Text style={[styles.heroTitle, { color: theme.background }]}>
+              {stats.remaining} {stats.remaining === 1 ? 'role is' : 'roles are'} ready for review
+            </Text>
+            <Text style={[styles.heroText, { color: `${theme.background}CC` }]}>
+              {resume
+                ? 'Updated from your resume, preferred locations, and recent swipe behavior.'
+                : 'Upload a resume to make the matching engine sharper.'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.heroButton, { backgroundColor: theme.primary }]}
+            onPress={() => navigation.navigate('Jobs')}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.heroButtonText, { color: theme.primaryForeground }]}>Start</Text>
+            <Ionicons name="arrow-forward" size={18} color={theme.primaryForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.pipelineRow}>
+          {pipeline.map((item, index) => (
+            <View
+              key={item.label}
+              style={[styles.metricCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            >
+              <View
+                style={[
+                  styles.metricIcon,
+                  { backgroundColor: index === 0 ? `${theme.primary}14` : index === 1 ? `${theme.accent}16` : `${theme.secondary}14` },
+                ]}
+              >
+                <Ionicons
+                  name={item.icon}
+                  size={18}
+                  color={index === 0 ? theme.primary : index === 1 ? theme.accent : theme.secondary}
+                />
+              </View>
+              <Text style={[styles.metricValue, { color: theme.foreground }]}>{item.value}</Text>
+              <Text style={[styles.metricLabel, { color: theme.mutedForeground }]}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Quick Actions</Text>
+            <Text style={[styles.sectionMeta, { color: theme.mutedForeground }]}>3 steps</Text>
+          </View>
+          <View style={styles.actionStack}>
+            {quickActions.map((action) => (
+              <TouchableOpacity
+                key={action.title}
+                style={[styles.actionRow, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={action.onPress}
+                activeOpacity={0.72}
+              >
+                <View style={[styles.actionIcon, { backgroundColor: `${action.color}16` }]}>
+                  <Ionicons name={action.icon} size={22} color={action.color} />
+                </View>
+                <View style={styles.actionText}>
+                  <Text style={[styles.actionTitle, { color: theme.foreground }]}>{action.title}</Text>
+                  <Text style={[styles.actionSubtitle, { color: theme.mutedForeground }]} numberOfLines={2}>
+                    {action.subtitle}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.foreground }]}>High-Fit Roles</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Jobs')} activeOpacity={0.7}>
+              <Text style={[styles.linkText, { color: theme.primary }]}>Review</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.matchStack}>
+            {highFitJobs.map((job) => (
+              <View key={job.id} style={[styles.matchCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.matchTop}>
+                  <View style={styles.matchTitleBlock}>
+                    <Text style={[styles.matchRole, { color: theme.foreground }]}>{job.title}</Text>
+                    <Text style={[styles.matchCompany, { color: theme.mutedForeground }]}>{job.company}</Text>
+                  </View>
+                  <View style={[styles.fitBadge, { backgroundColor: `${theme.success}15` }]}>
+                    <Text style={[styles.fitText, { color: theme.success }]}>{job.matchScore}%</Text>
+                  </View>
+                </View>
+                <Text style={[styles.matchDetail, { color: theme.mutedForeground }]}>
+                  {job.whyMatch.join(', ')}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -166,103 +194,194 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollView: { flex: 1 },
-  profileHeader: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.lg,
+  content: {
+    padding: Spacing.xl,
+    paddingBottom: Spacing['4xl'],
   },
-  profileRow: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.xl,
+  },
+  identity: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: Spacing.md,
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 3,
-    marginRight: Spacing.lg,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    marginRight: Spacing.md,
   },
-  profileText: { flex: 1 },
-  greeting: { fontSize: FontSize.sm },
-  userName: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginTop: 2 },
-  userEmail: { fontSize: FontSize.sm, marginTop: 2 },
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.xl,
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
+  identityText: { flex: 1 },
+  eyebrow: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    marginBottom: 2,
   },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
+  name: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  statValue: { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold },
-  statLabel: { fontSize: FontSize.xs, marginTop: Spacing.xs },
-  section: {
-    paddingHorizontal: Spacing.xl,
+  heroPanel: {
+    borderRadius: BorderRadius['2xl'],
+    padding: Spacing['2xl'],
     marginBottom: Spacing.lg,
+  },
+  heroCopy: { marginBottom: Spacing.xl },
+  heroKicker: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    marginBottom: Spacing.sm,
+  },
+  heroTitle: {
+    fontSize: FontSize['3xl'],
+    fontWeight: FontWeight.extrabold,
+    lineHeight: 36,
+    marginBottom: Spacing.sm,
+  },
+  heroText: {
+    fontSize: FontSize.md,
+    lineHeight: 22,
+  },
+  heroButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  heroButtonText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+  },
+  pipelineRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing['2xl'],
+  },
+  metricCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.md,
+  },
+  metricIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  metricValue: {
+    fontSize: FontSize['2xl'],
+    fontWeight: FontWeight.extrabold,
+  },
+  metricLabel: {
+    fontSize: FontSize.xs,
+    marginTop: 2,
+  },
+  section: {
+    marginBottom: Spacing['2xl'],
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
   },
   sectionTitle: {
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
-    marginBottom: Spacing.md,
   },
-  actionCard: {
+  sectionMeta: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+  },
+  actionStack: {
+    gap: Spacing.md,
+  },
+  actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.xl,
     borderWidth: 1,
-    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
   },
-  actionIconBox: {
-    width: 48,
-    height: 48,
+  actionIcon: {
+    width: 46,
+    height: 46,
     borderRadius: BorderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.md,
   },
   actionText: { flex: 1 },
-  actionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
-  actionSubtitle: { fontSize: FontSize.sm, marginTop: 2 },
-  ctaBanner: {
-    borderRadius: BorderRadius['2xl'],
-    borderWidth: 1,
-    padding: Spacing['2xl'],
-    alignItems: 'center',
+  actionTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+    marginBottom: 2,
   },
-  ctaTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
-  ctaSubtitle: {
+  actionSubtitle: {
     fontSize: FontSize.sm,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
+    lineHeight: 19,
+  },
+  linkText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+  },
+  matchStack: {
+    gap: Spacing.md,
+  },
+  matchCard: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+  },
+  matchTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  matchTitleBlock: { flex: 1 },
+  matchRole: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+  },
+  matchCompany: {
+    fontSize: FontSize.sm,
+    marginTop: 2,
+  },
+  fitBadge: {
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+  },
+  fitText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+  },
+  matchDetail: {
+    fontSize: FontSize.sm,
     lineHeight: 20,
   },
-  ctaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing['2xl'],
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    gap: Spacing.sm,
-  },
-  ctaButtonText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1.5,
-    gap: Spacing.sm,
-    marginBottom: Spacing['3xl'],
-  },
-  logoutText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
 });
 
 export default HomeScreen;

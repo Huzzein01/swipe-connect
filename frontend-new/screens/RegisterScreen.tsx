@@ -79,9 +79,16 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
     if (!validateForm()) return;
     try {
       await register(email, password, name);
-      navigation.replace('Main');
     } catch (error) {
       Alert.alert('Registration Error', 'Failed to create account. Please try again.');
+    }
+  };
+
+  const handlePreviewRegister = async () => {
+    try {
+      await register('preview@swipeconnect.app', 'preview-password', 'Preview User');
+    } catch (error) {
+      Alert.alert('Registration Error', 'Unable to open the preview account.');
     }
   };
 
@@ -274,10 +281,11 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
               {/* LinkedIn */}
               <TouchableOpacity
                 style={[styles.socialButton, { borderColor: theme.border }]}
+                onPress={handlePreviewRegister}
                 activeOpacity={0.7}
               >
-                <Ionicons name="logo-linkedin" size={20} color={isDark ? theme.foreground : '#0A66C2'} />
-                <Text style={[styles.socialButtonText, { color: theme.foreground }]}>LinkedIn</Text>
+                <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
+                <Text style={[styles.socialButtonText, { color: theme.foreground }]}>Preview Account</Text>
               </TouchableOpacity>
 
               {/* Login Link */}

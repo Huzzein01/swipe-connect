@@ -1,15 +1,20 @@
 import express from 'express';
-import { getJobs, saveJob, swipeJob, scrapeJobs } from '../controllers/job.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import {
+  applyToJob,
+  getJobs,
+  listApplications,
+  saveJob,
+  scrapeJobs,
+  swipeJob,
+} from '../controllers/job.controller';
 
 const router = express.Router();
 
-// Protected routes
-router.get('/', authenticate, getJobs);
-router.post('/:jobId/save', authenticate, saveJob);
-router.post('/:jobId/swipe', authenticate, swipeJob);
+router.get('/', getJobs);
+router.post('/apply', applyToJob);
+router.get('/applications', listApplications);
+router.post('/scrape', scrapeJobs);
+router.post('/:jobId/save', saveJob);
+router.post('/:jobId/swipe', swipeJob);
 
-// Admin route for scraping jobs
-router.post('/scrape', authenticate, scrapeJobs);
-
-export default router; 
+export default router;

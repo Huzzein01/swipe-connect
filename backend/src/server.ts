@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import passport from 'passport';
 import session from 'express-session';
-import { JobScraperService } from './services/job-scraper/job-scraper.service';
+import { JobService } from './services/job.service';
 import authRoutes from './routes/auth.routes';
 import jobRoutes from './routes/job.routes';
 import startupRoutes from './routes/startup.routes';
@@ -13,6 +13,7 @@ import './config/passport';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const jobService = new JobService();
 
 if (!process.env.SESSION_SECRET) {
   console.warn('WARNING: SESSION_SECRET not set. Using default is insecure in production.');
@@ -20,7 +21,21 @@ if (!process.env.SESSION_SECRET) {
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'http://localhost:3000',
+      'http://localhost:8092',
+      'http://127.0.0.1:8092',
+    ].filter(Boolean);
+
+    if (!origin || allowedOrigins.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked origin: ${origin}`));
+  },
   credentials: true,
 }));
 app.use(express.json());
@@ -38,27 +53,48 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/startups', startupRoutes);
 app.use('/api/users', userRoutes);
 
-// Initialize job scraper service
-const jobScraperService = new JobScraperService();
-
-// Connect to MongoDB and start the server
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/swipeconnect')
-  .then(async () => {
-    console.log('Connected to MongoDB');
-    
-    // Start the job scraper service
-    await jobScraperService.startScraping();
-    console.log('Job scraper service started');
-
-    // Start the server
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
+app.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    mongo: mongoose.connection.readyState === 1 ? 'connected' : 'offline-demo-mode',
+    jobSources: ['Himalayas', 'Remotive', 'Arbeitnow'],
   });
+});
+
+const startServer = () => {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+};
+
+const mongoUri = process.env.MONGODB_URI;
+
+if (mongoUri) {
+  mongoose.connect(mongoUri)
+    .then(async () => {
+      console.log('Connected to MongoDB');
+      await jobService.scrapeAndSaveJobs();
+      startServer();
+    })
+    .catch((error) => {
+      console.error('MongoDB connection error:', error);
+      console.log('Starting server in offline demo mode.');
+      startServer();
+    });
+} else {
+  console.log('MONGODB_URI not set. Starting server in offline demo mode.');
+  startServer();
+}
+
+mongoose.connection.on('error', (error) => {
+  console.error('MongoDB runtime error:', error);
+});
+
+mongoose.connection.on('disconnected', () => {
+  if (mongoUri) {
+    console.warn('MongoDB disconnected; public job API fallback remains available.');
+  }
+});
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {

@@ -4,9 +4,15 @@ import User from '../models/User';
 
 export const generateToken = (user: any) => {
   return jwt.sign(
-    { id: user._id, email: user.email },
-    process.env.JWT_SECRET!,
-    { expiresIn: process.env.JWT_EXPIRATION }
+    {
+      id: user._id?.toString?.() || user.id,
+      email: user.email,
+      name: user.name,
+      displayName: user.name,
+      photoURL: user.photoURL || user.profilePicture,
+    },
+    process.env.JWT_SECRET || 'dev-only-jwt-secret-change-in-production',
+    { expiresIn: (process.env.JWT_EXPIRATION || '7d') as any }
   );
 };
 
@@ -25,7 +31,12 @@ export const linkedinCallback = async (req: Request, res: Response, next: NextFu
 
 export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findById(req.user?.id).select('-__v');
+    const userId = (req.user as any)?._id || (req.user as any)?.id;
+    if (typeof userId === 'string' && userId.startsWith('linkedin-')) {
+      return res.json(req.user);
+    }
+
+    const user = await User.findById(userId).select('-__v');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -39,7 +50,7 @@ export const updatePreferences = async (req: Request, res: Response, next: NextF
   try {
     const { jobTypes, locations, experienceLevel, salaryRange } = req.body;
     const user = await User.findByIdAndUpdate(
-      req.user?.id,
+      (req.user as any)?._id || (req.user as any)?.id,
       {
         $set: {
           'preferences.jobTypes': jobTypes,

@@ -1,7 +1,9 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './contexts/AuthContext';
+import { DemoProvider } from './contexts/DemoContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import AppNavigator from './navigation/AppNavigator';
 
@@ -18,10 +20,14 @@ const ThemedApp = () => {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <ThemedApp />
-      </AuthProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <AuthProvider>
+          <DemoProvider>
+            <ThemedApp />
+          </DemoProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -12,10 +12,12 @@ import {
   TouchableWithoutFeedback,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { jobService } from '../services/jobService';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 import Logo from '../components/Logo';
 
@@ -37,9 +39,27 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     }
     try {
       await login(email, password);
-      navigation.replace('Main');
     } catch (error) {
       Alert.alert('Login Error', 'Invalid email or password. Please try again.');
+    }
+  };
+
+  const handlePreviewLogin = async () => {
+    try {
+      await login('preview@swipeconnect.app', 'preview-password');
+    } catch (error) {
+      Alert.alert('Login Error', 'Unable to open the preview account.');
+    }
+  };
+
+  const handleLinkedInLogin = async () => {
+    const backendRoot = jobService.apiBaseUrl.replace(/\/api$/, '');
+    const linkedInUrl = `${backendRoot}/auth/linkedin`;
+
+    try {
+      await Linking.openURL(linkedInUrl);
+    } catch (error) {
+      Alert.alert('LinkedIn setup needed', 'Add LinkedIn OAuth credentials to the backend .env, then try again.');
     }
   };
 
@@ -158,11 +178,23 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
               {/* LinkedIn Button */}
               <TouchableOpacity
                 style={[styles.socialButton, { borderColor: theme.border }]}
+                onPress={handleLinkedInLogin}
                 activeOpacity={0.7}
               >
-                <Ionicons name="logo-linkedin" size={20} color={isDark ? theme.foreground : '#0A66C2'} />
+                <Ionicons name="logo-linkedin" size={20} color="#0A66C2" />
                 <Text style={[styles.socialButtonText, { color: theme.foreground }]}>
-                  LinkedIn
+                  Continue with LinkedIn
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.socialButton, styles.previewButton, { borderColor: theme.border }]}
+                onPress={handlePreviewLogin}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
+                <Text style={[styles.socialButtonText, { color: theme.foreground }]}>
+                  Preview Account
                 </Text>
               </TouchableOpacity>
 
@@ -299,6 +331,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
     gap: Spacing.sm,
+  },
+  previewButton: {
+    marginTop: Spacing.md,
   },
   socialButtonText: {
     fontSize: FontSize.md,
