@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,8 +8,11 @@ import {
   Switch,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useDemo } from '../contexts/DemoContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,8 +26,56 @@ const SettingsScreen = () => {
   const [locationServices, setLocationServices] = useState(true);
   const [biometricAuth, setBiometricAuth] = useState(false);
 
+  useEffect(() => {
+    const loadBiometricPreference = async () => {
+      const stored = await AsyncStorage.getItem('swipeconnect.biometricAuth');
+      setBiometricAuth(stored === 'true');
+    };
+
+    loadBiometricPreference();
+  }, []);
+
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     setThemeMode(newTheme);
+  };
+
+  const handleBiometricToggle = async (enabled: boolean) => {
+    if (!enabled) {
+      setBiometricAuth(false);
+      await AsyncStorage.setItem('swipeconnect.biometricAuth', 'false');
+      return;
+    }
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.prompt('Confirm your account password or device password to enable secure sign-in.');
+      if (!confirmed) {
+        Alert.alert('Secure sign-in not enabled', 'Password confirmation was cancelled.');
+        return;
+      }
+    } else {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = hasHardware ? await LocalAuthentication.isEnrolledAsync() : false;
+
+      if (!hasHardware || !isEnrolled) {
+        Alert.alert('Biometric unavailable', 'Set up Face ID, Touch ID, fingerprint, or device passcode first.');
+        return;
+      }
+
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Unlock SwipeConnect',
+        fallbackLabel: 'Use device passcode',
+        cancelLabel: 'Cancel',
+        disableDeviceFallback: false,
+      });
+
+      if (!result.success) {
+        Alert.alert('Secure sign-in not enabled', 'Biometric authorization was cancelled.');
+        return;
+      }
+    }
+
+    setBiometricAuth(true);
+    await AsyncStorage.setItem('swipeconnect.biometricAuth', 'true');
   };
 
   const handleDeleteAccount = () => {
@@ -147,11 +198,18 @@ const SettingsScreen = () => {
               </View>
               <Switch
                 value={biometricAuth}
-                onValueChange={setBiometricAuth}
+                onValueChange={handleBiometricToggle}
                 trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
                 thumbColor={biometricAuth ? theme.primary : '#f4f3f4'}
               />
             </View>
+            <Text style={[styles.settingDescription, { color: theme.mutedForeground }]}>
+              {biometricAuth
+                ? 'Secure sign-in is enabled for this demo account.'
+                : Platform.OS === 'web'
+                  ? 'Enable to require a password confirmation on this browser.'
+                  : 'Enable to verify Face ID or your device biometric prompt before sign-in.'}
+            </Text>
           </View>
         </View>
 
@@ -218,6 +276,12 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.medium,
+  },
+  settingDescription: {
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    marginTop: Spacing.xs,
+    marginLeft: 52,
   },
   themeOptions: {
     flexDirection: 'row',

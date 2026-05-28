@@ -17,10 +17,19 @@ type AuthUser = Pick<FirebaseUser, 'uid' | 'email' | 'displayName' | 'photoURL'>
   authToken?: string;
 };
 
+export type SignInRecord = {
+  id: string;
+  email: string;
+  method: 'email' | 'linkedin' | 'preview' | 'signup';
+  platform: string;
+  at: string;
+};
+
 type AuthContextType = {
   user: AuthUser | null;
   loading: boolean;
   isLoading: boolean;
+  signInHistory: SignInRecord[];
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -32,6 +41,7 @@ type AuthContextType = {
 
 const LOCAL_PREVIEW_USER_KEY = 'swipeconnect.previewUser';
 const LOCAL_AUTH_TOKEN_KEY = 'swipeconnect.authToken';
+const LOCAL_SIGN_IN_HISTORY_KEY = 'swipeconnect.signInHistory';
 const isPreviewAuthEnabled = Platform.OS === 'web' || process.env.EXPO_PUBLIC_ENABLE_DEMO_AUTH !== 'false';
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -88,9 +98,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authActionLoading, setAuthActionLoading] = useState(false);
+  const [signInHistory, setSignInHistory] = useState<SignInRecord[]>([]);
+
+  const recordSignIn = async (
+    method: SignInRecord['method'],
+    email?: string | null
+  ) => {
+    const stored = await AsyncStorage.getItem(LOCAL_SIGN_IN_HISTORY_KEY);
+    const previous: SignInRecord[] = stored ? JSON.parse(stored) : signInHistory;
+    const nextRecord: SignInRecord = {
+      id: `signin-${Date.now()}`,
+      email: email || 'unknown@swipeconnect.app',
+      method,
+      platform: Platform.OS,
+      at: new Date().toISOString(),
+    };
+    const nextHistory = [nextRecord, ...previous].slice(0, 25);
+    await AsyncStorage.setItem(LOCAL_SIGN_IN_HISTORY_KEY, JSON.stringify(nextHistory));
+    setSignInHistory(nextHistory);
+  };
 
   useEffect(() => {
     let isMounted = true;
+
+    const loadSignInHistory = async () => {
+      const stored = await AsyncStorage.getItem(LOCAL_SIGN_IN_HISTORY_KEY);
+      if (stored && isMounted) {
+        setSignInHistory(JSON.parse(stored));
+      }
+    };
 
     const saveSignedInUser = async (nextUser: AuthUser) => {
       await AsyncStorage.setItem(LOCAL_PREVIEW_USER_KEY, JSON.stringify(nextUser));
@@ -121,10 +157,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         photoURL: profile.photoURL || profile.profilePicture || null,
         authToken: token,
       });
+      await recordSignIn('linkedin', profile.email);
     };
 
     const loadPreviewUser = async () => {
       try {
+        await loadSignInHistory();
         const callbackToken = getLinkedInCallbackToken();
         if (callbackToken) {
           await loadLinkedInUser(callbackToken);
@@ -153,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!isMounted) return;
+      loadSignInHistory();
 
       if (firebaseUser) {
         setUser(toAuthUser(firebaseUser));
@@ -183,19 +222,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithPreviewFallback = async (email: string, displayName?: string) => {
+  const signInWithPreviewFallback = async (
+    email: string,
+    displayName?: string,
+    method: SignInRecord['method'] = 'preview'
+  ) => {
     if (!isPreviewAuthEnabled) {
       throw new Error('Preview authentication is disabled.');
     }
 
     await savePreviewUser(createPreviewUser(email, displayName));
+    await recordSignIn(method, email);
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
     setAuthActionLoading(true);
     try {
       if (isPreviewAuthEnabled) {
-        await signInWithPreviewFallback(email, displayName);
+        await signInWithPreviewFallback(email, displayName, 'signup');
         return;
       }
 
@@ -203,8 +247,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await updateProfile(userCredential.user, { displayName });
       setUser({ ...toAuthUser(userCredential.user), displayName });
       await clearPreviewUser();
+      await recordSignIn('signup', email);
     } catch (error) {
-      await signInWithPreviewFallback(email, displayName);
+      await signInWithPreviewFallback(email, displayName, 'signup');
     } finally {
       setAuthActionLoading(false);
     }
@@ -214,15 +259,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthActionLoading(true);
     try {
       if (isPreviewAuthEnabled) {
-        await signInWithPreviewFallback(email);
+        await signInWithPreviewFallback(email, undefined, 'email');
         return;
       }
 
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       setUser(toAuthUser(userCredential.user));
       await clearPreviewUser();
+      await recordSignIn('email', email);
     } catch (error) {
-      await signInWithPreviewFallback(email);
+      await signInWithPreviewFallback(email, undefined, 'email');
     } finally {
       setAuthActionLoading(false);
     }
@@ -275,6 +321,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         loading: isCurrentlyLoading,
         isLoading: isCurrentlyLoading,
+        signInHistory,
         signUp,
         signIn,
         logout,

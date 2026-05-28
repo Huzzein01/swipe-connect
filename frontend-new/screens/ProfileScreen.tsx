@@ -8,10 +8,12 @@ import {
   ScrollView,
   Image,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemo } from '../contexts/DemoContext';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 type ProfileScreenProps = {
@@ -20,13 +22,33 @@ type ProfileScreenProps = {
 
 const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, updateUserProfile, signInHistory } = useAuth();
+  const { resume } = useDemo();
+  const latestSignIn = signInHistory[0];
+  const initials = (user?.displayName || user?.email || 'SC')
+    .split(/[ @._-]/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
 
-  const handleEditProfile = () => {
-    Alert.alert(
-      'Profile ready',
-      'This preview profile is active. Account editing can be connected to Firebase or your backend next.'
-    );
+  const handleEditProfile = async () => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
+      Alert.alert('Edit profile', 'Profile editing is active on the web preview. Native image picking comes next for the store builds.');
+      return;
+    }
+
+    const displayName = window.prompt('Display name', user?.displayName || '')?.trim();
+    if (displayName === undefined) return;
+    const photoURL = window.prompt('Profile photo URL', user?.photoURL || '')?.trim();
+
+    await updateUserProfile(displayName || user?.displayName || 'SwipeConnect User', photoURL || undefined);
+    Alert.alert('Profile updated', 'Your name and photo were saved to this demo account.');
+  };
+
+  const formatSignInTime = (value?: string) => {
+    if (!value) return 'No tracked sign-ins yet';
+    return new Date(value).toLocaleString();
   };
 
   const menuSections = [
@@ -79,10 +101,16 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
         <View style={[styles.profileCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Image
-            source={{ uri: user?.photoURL || 'https://via.placeholder.com/100' }}
-            style={[styles.avatar, { borderColor: theme.primary }]}
-          />
+          {user?.photoURL ? (
+            <Image
+              source={{ uri: user.photoURL }}
+              style={[styles.avatar, { borderColor: theme.primary }]}
+            />
+          ) : (
+            <View style={[styles.avatarFallback, { borderColor: theme.primary, backgroundColor: `${theme.primary}18` }]}>
+              <Text style={[styles.avatarInitials, { color: theme.primary }]}>{initials || 'SC'}</Text>
+            </View>
+          )}
           <Text style={[styles.userName, { color: theme.foreground }]}>
             {user?.displayName || 'User Name'}
           </Text>
@@ -98,6 +126,25 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
             <Ionicons name="pencil-outline" size={16} color={theme.primary} />
             <Text style={[styles.editButtonText, { color: theme.primary }]}>Edit Profile</Text>
           </TouchableOpacity>
+
+          <View style={styles.profileStats}>
+            <View style={[styles.statPill, { backgroundColor: theme.muted }]}>
+              <Ionicons name="document-text-outline" size={15} color={resume ? theme.success : theme.mutedForeground} />
+              <Text style={[styles.statPillText, { color: theme.foreground }]}>
+                {resume ? 'Resume active' : 'Resume needed'}
+              </Text>
+            </View>
+            <View style={[styles.statPill, { backgroundColor: theme.muted }]}>
+              <Ionicons name="log-in-outline" size={15} color={theme.primary} />
+              <Text style={[styles.statPillText, { color: theme.foreground }]}>
+                {signInHistory.length} sign-ins
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.signInText, { color: theme.mutedForeground }]}>
+            Last sign-in: {formatSignInTime(latestSignIn?.at)}
+          </Text>
         </View>
 
         {/* Menu Sections */}
@@ -158,6 +205,19 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     marginBottom: Spacing.lg,
   },
+  avatarFallback: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+  avatarInitials: {
+    fontSize: FontSize['2xl'],
+    fontWeight: FontWeight.bold,
+  },
   userName: {
     fontSize: FontSize.xl,
     fontWeight: FontWeight.bold,
@@ -178,6 +238,30 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
+  },
+  profileStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.lg,
+  },
+  statPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  statPillText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
+  },
+  signInText: {
+    marginTop: Spacing.md,
+    fontSize: FontSize.xs,
+    textAlign: 'center',
   },
   menuSection: {
     paddingHorizontal: Spacing.xl,

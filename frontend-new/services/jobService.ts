@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { ApplicationRecord, Job, Resume, UserPreferences } from '../types/job';
+import { buildSimulatedJobDeck } from './simulatedJobs';
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
@@ -88,11 +89,11 @@ export const jobService = {
   getJobs: async (preferences?: UserPreferences): Promise<Job[]> => {
     try {
       const query = encodeURIComponent(queryFromPreferences(preferences));
-      const data = await requestJson<{ jobs: Job[] }>(`/jobs?q=${query}&limit=24`);
-      return data.jobs.length > 0 ? data.jobs : fallbackJobs;
+      const data = await requestJson<{ jobs: Job[] }>(`/jobs?q=${query}&limit=48`);
+      return buildSimulatedJobDeck(data.jobs.length > 0 ? data.jobs : fallbackJobs, preferences, 1000);
     } catch (error) {
       console.warn('Using local job fallback because the backend job feed is unavailable.', error);
-      return fallbackJobs;
+      return buildSimulatedJobDeck(fallbackJobs, preferences, 1000);
     }
   },
 

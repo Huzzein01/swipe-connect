@@ -23,6 +23,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { user, logout } = useAuth();
   const { highFitJobs, stats, resume } = useDemo();
   const { theme } = useTheme();
+  const demoDeckSize = 1000;
 
   const handleLogout = async () => {
     try {
@@ -57,7 +58,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   ];
 
   const pipeline = [
-    { label: 'Matches', value: stats.matches.toString(), icon: 'sparkles-outline' as const },
+    { label: 'Job deck', value: demoDeckSize.toLocaleString(), icon: 'sparkles-outline' as const },
     { label: 'Applied', value: stats.applied.toString(), icon: 'send-outline' as const },
     { label: 'Saved', value: stats.saved.toString(), icon: 'bookmark-outline' as const },
   ];
@@ -91,7 +92,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           <View style={styles.heroCopy}>
             <Text style={[styles.heroKicker, { color: theme.accent }]}>Today's shortlist</Text>
             <Text style={[styles.heroTitle, { color: theme.background }]}>
-              {stats.remaining} {stats.remaining === 1 ? 'role is' : 'roles are'} ready for review
+              {demoDeckSize.toLocaleString()} roles ready to swipe
             </Text>
             <Text style={[styles.heroText, { color: `${theme.background}CC` }]}>
               {resume

@@ -31,7 +31,7 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
 
   const handleSave = async () => {
     await savePreferences(preferences);
-    Alert.alert('Preferences saved', 'Your preview job preferences have been updated.');
+    Alert.alert('Preferences saved', 'Your swipe deck will rebuild around these filters.');
     navigation.goBack();
   };
 
