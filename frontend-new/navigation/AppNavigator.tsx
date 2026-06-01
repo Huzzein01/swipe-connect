@@ -18,7 +18,7 @@ import HelpScreen from '../screens/HelpScreen';
 import JobSwipeScreen from '../screens/JobSwipeScreen';
 import JobFiltersScreen from '../screens/JobFiltersScreen';
 import ResumeUploadScreen from '../screens/ResumeUploadScreen';
-import MatchesScreen from '../screens/MatchesScreen';
+import NetworkScreen from '../screens/MatchesScreen';
 import ChatScreen from '../screens/ChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import NotificationBell from '../components/NotificationBell';
@@ -39,23 +39,22 @@ const MainTabs = () => {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           const icons: Record<string, [string, string]> = {
-            Home: ['home', 'home-outline'],
-            Discover: ['compass', 'compass-outline'],
-            Matches: ['heart', 'heart-outline'],
-            Profile: ['person', 'person-outline'],
+            Home:     ['home',        'home-outline'],
+            Discover: ['compass',     'compass-outline'],
+            Network:  ['git-network', 'git-network-outline'],
+            Profile:  ['person',      'person-outline'],
           };
           const [filled, outline] = icons[route.name] || ['ellipse', 'ellipse-outline'];
           return (
             <View>
               <Ionicons name={(focused ? filled : outline) as any} size={size} color={color} />
-              {route.name === 'Matches' && totalUnread > 0 && (
+              {route.name === 'Network' && totalUnread > 0 && (
                 <View style={{
                   position: 'absolute', top: -4, right: -8,
                   width: 16, height: 16, borderRadius: 8,
-                  backgroundColor: theme.primary,
+                  backgroundColor: theme.accent,
                   alignItems: 'center', justifyContent: 'center',
-                }}>
-                </View>
+                }} />
               )}
             </View>
           );
@@ -97,8 +96,8 @@ const MainTabs = () => {
         })}
       />
       <Tab.Screen name="Discover" component={JobSwipeScreen} options={{ headerShown: false, title: 'Discover' }} />
-      <Tab.Screen name="Matches" component={MatchesScreen} options={{ headerShown: false, title: 'Matches' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+      <Tab.Screen name="Network"  component={NetworkScreen}  options={{ headerShown: false, title: 'Network' }} />
+      <Tab.Screen name="Profile"  component={ProfileScreen}  options={{ title: 'Profile' }} />
     </Tab.Navigator>
   );
 };

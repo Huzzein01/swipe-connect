@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
 import { ApplicationRecord, Job, Resume, UserPreferences } from '../types/job';
-import { buildSimulatedJobDeck } from './simulatedJobs';
 
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
@@ -91,16 +90,16 @@ export const jobService = {
       const query = encodeURIComponent(queryFromPreferences(preferences));
       const remote = preferences?.remote ? '&remote=true' : '';
 
-      // Fetch both general feed and real-time ATS scan in parallel
+      // Fetch general feed and ATS scan in parallel
       const [feedResult, scanResult] = await Promise.allSettled([
-        requestJson<{ jobs: Job[] }>(`/jobs?q=${query}&limit=40`),
-        requestJson<{ jobs: Job[] }>(`/jobs/scan?q=${query}&limit=80&quick=true${remote}`),
+        requestJson<{ jobs: Job[] }>(`/jobs?q=${query}&limit=60`),
+        requestJson<{ jobs: Job[] }>(`/jobs/scan?q=${query}&limit=100&quick=true${remote}`),
       ]);
 
-      const feedJobs = feedResult.status === 'fulfilled' ? feedResult.value.jobs : [];
-      const scanJobs = scanResult.status === 'fulfilled' ? scanResult.value.jobs : [];
+      const feedJobs = feedResult.status === 'fulfilled' ? (feedResult.value.jobs ?? []) : [];
+      const scanJobs = scanResult.status === 'fulfilled' ? (scanResult.value.jobs ?? []) : [];
 
-      // Merge and deduplicate by company+title
+      // Merge and deduplicate by company+title — real jobs only
       const seen = new Set<string>();
       const merged: Job[] = [];
       for (const job of [...scanJobs, ...feedJobs]) {
@@ -111,11 +110,11 @@ export const jobService = {
         }
       }
 
-      const source = merged.length > 0 ? merged : fallbackJobs;
-      return buildSimulatedJobDeck(source, preferences, 1000);
+      // Sort by matchScore descending, return real jobs only
+      return merged.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
     } catch (error) {
-      console.warn('Using local job fallback because the backend is unavailable.', error);
-      return buildSimulatedJobDeck(fallbackJobs, preferences, 1000);
+      console.warn('Backend unavailable — job feed empty.', error);
+      return [];
     }
   },
 

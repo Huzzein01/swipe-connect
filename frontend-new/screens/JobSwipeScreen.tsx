@@ -484,7 +484,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
               activeOpacity={0.8}
             >
               <Ionicons
-                name={item === 'jobs' ? 'briefcase-outline' : 'people-outline'}
+                name={item === 'jobs' ? 'briefcase-outline' : 'git-network-outline'}
                 size={16}
                 color={active ? '#fff' : theme.mutedForeground}
               />
@@ -496,19 +496,23 @@ const JobSwipeScreen = ({ navigation }: Props) => {
         })}
       </View>
 
-      {/* Stats row */}
-      <View style={styles.statsRow}>
-        {[
-          { value: mode === 'jobs' ? appliedJobIds.length : 0, label: mode === 'jobs' ? 'Applied' : 'Matched', color: theme.accent },
-          { value: mode === 'jobs' ? savedJobIds.length : 0, label: 'Saved', color: theme.secondary },
-          { value: `${activeRemaining}/${activeCount}`, label: 'In deck', color: theme.primary },
-        ].map((s) => (
-          <View key={s.label} style={[styles.statPill, { backgroundColor: `${s.color}12` }]}>
-            <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-            <Text style={[styles.statLabel, { color: theme.mutedForeground }]}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
+      {/* Minimal action counts — no deck counter */}
+      {(appliedJobIds.length > 0 || savedJobIds.length > 0) && mode === 'jobs' && (
+        <View style={styles.statsRow}>
+          {appliedJobIds.length > 0 && (
+            <View style={[styles.statPill, { backgroundColor: `${theme.success}12` }]}>
+              <Ionicons name="send-outline" size={13} color={theme.success} />
+              <Text style={[styles.statValue, { color: theme.success }]}>{appliedJobIds.length} applied</Text>
+            </View>
+          )}
+          {savedJobIds.length > 0 && (
+            <View style={[styles.statPill, { backgroundColor: `${theme.secondary}12` }]}>
+              <Ionicons name="bookmark-outline" size={13} color={theme.secondary} />
+              <Text style={[styles.statValue, { color: theme.secondary }]}>{savedJobIds.length} saved</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Status banner */}
       {statusMessage && (
@@ -524,8 +528,13 @@ const JobSwipeScreen = ({ navigation }: Props) => {
           <View style={styles.center}>
             <ActivityIndicator size="large" color={theme.primary} />
             <Text style={[styles.loadingText, { color: theme.mutedForeground }]}>
-              {isFetchingJobs ? 'Building your deck…' : 'Submitting application…'}
+              {isFetchingJobs ? 'Fetching live jobs…' : 'Submitting application…'}
             </Text>
+            {isFetchingJobs && (
+              <Text style={[styles.loadingSubText, { color: theme.mutedForeground }]}>
+                Scanning Greenhouse, Ashby, Lever and more
+              </Text>
+            )}
           </View>
         ) : currentCard ? (
           <View style={styles.stage}>
@@ -539,8 +548,8 @@ const JobSwipeScreen = ({ navigation }: Props) => {
             <GestureDetector gesture={panGesture}>
               <Animated.View style={[styles.frontCard, cardStyle]}>
                 {/* Swipe labels */}
-                <Animated.View style={[styles.swipeLabel, styles.applyLabel, applyLabelStyle]}>
-                  <Text style={[styles.swipeLabelText, { color: theme.success }]}>
+                <Animated.View style={[styles.swipeLabel, styles.applyLabel, applyLabelStyle, mode === 'networking' && { borderColor: theme.accent }]}>
+                  <Text style={[styles.swipeLabelText, { color: mode === 'jobs' ? theme.success : theme.accent }]}>
                     {mode === 'jobs' ? 'APPLY' : 'CONNECT'}
                   </Text>
                 </Animated.View>
@@ -560,9 +569,13 @@ const JobSwipeScreen = ({ navigation }: Props) => {
             <View style={[styles.emptyIcon, { backgroundColor: `${theme.primary}12` }]}>
               <Ionicons name="checkmark-done-outline" size={42} color={theme.primary} />
             </View>
-            <Text style={[styles.emptyTitle, { color: theme.foreground }]}>All caught up</Text>
+            <Text style={[styles.emptyTitle, { color: theme.foreground }]}>
+              {mode === 'jobs' ? 'All caught up' : 'Network fully explored'}
+            </Text>
             <Text style={[styles.emptySub, { color: theme.mutedForeground }]}>
-              {mode === 'jobs' ? 'You reviewed the full job deck.' : 'You reviewed all networking profiles.'}
+              {mode === 'jobs'
+                ? 'You reviewed every live role in this session. Pull-to-refresh or adjust your preferences for fresh jobs.'
+                : 'You reviewed all networking profiles. Check back soon for new people to connect with.'}
             </Text>
           </View>
         )}
@@ -593,7 +606,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
               handleSwipe('right');
             }}
           >
-            <Ionicons name={mode === 'jobs' ? 'send' : 'people'} size={25} color={mode === 'networking' ? theme.accent : theme.success} />
+            <Ionicons name={mode === 'jobs' ? 'send' : 'git-network-outline'} size={25} color={mode === 'networking' ? theme.accent : theme.success} />
           </Pressable>
         </View>
       )}
@@ -775,9 +788,9 @@ const styles = StyleSheet.create({
   toggle: { flexDirection: 'row', borderWidth: 1, borderRadius: BorderRadius.full, padding: 4, marginHorizontal: Spacing.xl, marginBottom: Spacing.sm },
   toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: BorderRadius.full, paddingVertical: Spacing.sm, gap: Spacing.xs },
   toggleText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
-  statsRow: { flexDirection: 'row', gap: Spacing.md, paddingHorizontal: Spacing.xl, marginBottom: Spacing.sm },
-  statPill: { flex: 1, borderRadius: BorderRadius.xl, paddingVertical: Spacing.md, paddingHorizontal: Spacing.md },
-  statValue: { fontSize: FontSize.lg, fontWeight: FontWeight.extrabold },
+  statsRow: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.xl, marginBottom: Spacing.sm },
+  statPill: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, borderRadius: BorderRadius.full, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md },
+  statValue: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
   statLabel: { fontSize: FontSize.xs, marginTop: 2 },
   statusBanner: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: BorderRadius.lg, gap: Spacing.sm, marginHorizontal: Spacing.xl, marginBottom: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
   statusText: { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.medium },
@@ -819,6 +832,7 @@ const styles = StyleSheet.create({
   swipeLabelText: { fontSize: FontSize.lg, fontWeight: FontWeight.extrabold, letterSpacing: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing['2xl'] },
   loadingText: { fontSize: FontSize.md, marginTop: Spacing.md },
+  loadingSubText: { fontSize: FontSize.sm, marginTop: Spacing.sm, opacity: 0.7 },
   emptyIcon: { width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },
   emptyTitle: { fontSize: FontSize['2xl'], fontWeight: FontWeight.extrabold, marginBottom: Spacing.sm },
   emptySub: { fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 },
