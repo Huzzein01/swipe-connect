@@ -19,7 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePremium } from '../contexts/PremiumContext';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
-const SettingsScreen = () => {
+const SettingsScreen = ({ navigation }: { navigation?: any }) => {
   const { theme, themeMode, setThemeMode } = useTheme();
   const { logout } = useAuth();
   const { resetDemo } = useDemo();
@@ -256,6 +256,70 @@ const SettingsScreen = () => {
           </View>
         </View>
 
+        {/* Career Tools Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Career Tools</Text>
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {[
+              {
+                icon: 'document-text-outline' as const,
+                color: theme.secondary,
+                label: 'Resume Builder',
+                sub: 'ATS templates + fill-in builder',
+                badge: 'PRO',
+                screen: 'ResumeBuilder',
+              },
+              {
+                icon: 'create-outline' as const,
+                color: theme.accent,
+                label: 'Cover Letter Generator',
+                sub: 'AI-written, tone-matched to each role',
+                badge: 'PRO',
+                screen: 'CoverLetter',
+              },
+            ].map((item, i, arr) => (
+              <View key={item.label}>
+                <TouchableOpacity
+                  style={styles.settingRow}
+                  onPress={() => navigation?.navigate(item.screen)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.settingRowLeft}>
+                    <View style={[styles.settingIconBox, { backgroundColor: `${item.color}15` }]}>
+                      <Ionicons name={item.icon} size={20} color={item.color} />
+                    </View>
+                    <View>
+                      <Text style={[styles.settingLabel, { color: theme.foreground }]}>{item.label}</Text>
+                      <Text style={[styles.settingDescription, { color: theme.mutedForeground, marginTop: 0, marginLeft: 0 }]}>{item.sub}</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.proBadge, { backgroundColor: `${theme.primary}15` }]}>
+                    <Ionicons name="sparkles" size={10} color={theme.primary} />
+                    <Text style={[styles.proBadgeText, { color: theme.primary }]}>{item.badge}</Text>
+                  </View>
+                </TouchableOpacity>
+                {i < arr.length - 1 && <View style={[styles.divider, { backgroundColor: theme.border }]} />}
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Legal */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Legal</Text>
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity style={styles.settingRow} onPress={() => navigation?.navigate('Privacy')} activeOpacity={0.7}>
+              <View style={styles.settingRowLeft}>
+                <View style={[styles.settingIconBox, { backgroundColor: `${theme.mutedForeground}15` }]}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color={theme.mutedForeground} />
+                </View>
+                <Text style={[styles.settingLabel, { color: theme.foreground }]}>Privacy Policy</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Account Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Account</Text>
@@ -361,6 +425,15 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
   },
+  proBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 3,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+  },
+  proBadgeText: { fontSize: 10, fontWeight: FontWeight.extrabold },
   aiActiveTag: {
     flexDirection: 'row',
     alignItems: 'center',

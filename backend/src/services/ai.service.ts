@@ -116,6 +116,50 @@ Return this exact JSON shape (no markdown, raw JSON only):
   return JSON.parse(jsonMatch[0]) as TailoredResume;
 };
 
+export type CoverLetterResult = {
+  letter: string;
+  wordCount: number;
+};
+
+/** AI cover letter generation using Sonnet */
+export const generateCoverLetter = async (
+  jobTitle: string,
+  company: string,
+  jobDescription: string,
+  tone: string,
+  candidateName: string,
+  candidateTitle: string,
+  candidateSkills: string[],
+  candidateBio: string,
+  candidateExperience: string
+): Promise<CoverLetterResult> => {
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const prompt = `Write a professional cover letter for a job application. Return only the cover letter text — no JSON, no markdown, no explanation.
+
+Position: ${jobTitle} at ${company}
+Tone: ${tone}
+Date: ${today}
+Candidate name: ${candidateName}
+Candidate title: ${candidateTitle}
+Candidate skills: ${candidateSkills.join(', ')}
+Candidate bio: ${candidateBio}
+Years of experience: ${candidateExperience}
+${jobDescription ? `Job description:\n${jobDescription.slice(0, 800)}` : ''}
+
+Guidelines:
+- Start with the date, then "Dear Hiring Manager,"
+- 3–4 paragraphs: hook, relevant experience, why this company, closing
+- Tone: ${tone.toLowerCase()}
+- Do NOT use clichés like "I am writing to apply" or "passionate"
+- End with "Sincerely,\\n${candidateName}"
+- Keep under 400 words`;
+
+  const text = await callClaude('claude-sonnet-4-5', prompt, 1024);
+  const words = text.trim().split(/\s+/).length;
+  return { letter: text.trim(), wordCount: words };
+};
+
 // ─── Fallback scoring (no API key) ────────────────────────────────────────────
 const fallbackMatchScore = (resumeText: string, requirements: string[]): MatchAnalysis => {
   const lower = resumeText.toLowerCase();

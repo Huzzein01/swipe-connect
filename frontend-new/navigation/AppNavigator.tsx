@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, TouchableOpacity, View } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,9 @@ import ResumeUploadScreen from '../screens/ResumeUploadScreen';
 import NetworkScreen from '../screens/MatchesScreen';
 import ChatScreen from '../screens/ChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import ResumeBuilderScreen from '../screens/ResumeBuilderScreen';
+import CoverLetterScreen from '../screens/CoverLetterScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import NotificationBell from '../components/NotificationBell';
 
 const Stack = createStackNavigator();
@@ -51,9 +54,8 @@ const MainTabs = () => {
               {route.name === 'Network' && totalUnread > 0 && (
                 <View style={{
                   position: 'absolute', top: -4, right: -8,
-                  width: 16, height: 16, borderRadius: 8,
+                  width: 14, height: 14, borderRadius: 7,
                   backgroundColor: theme.accent,
-                  alignItems: 'center', justifyContent: 'center',
                 }} />
               )}
             </View>
@@ -68,10 +70,13 @@ const MainTabs = () => {
           height: TAB_HEIGHT,
           paddingBottom: TAB_PADDING_BOTTOM,
           paddingTop: 8,
-          elevation: 0,
-          shadowOpacity: 0,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: -2 },
         },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' as const },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' as const },
         headerStyle: {
           backgroundColor: theme.background,
           elevation: 0,
@@ -80,7 +85,7 @@ const MainTabs = () => {
           borderBottomColor: theme.border,
         },
         headerTintColor: theme.foreground,
-        headerTitleStyle: { fontWeight: '700' as const, fontSize: 18 },
+        headerTitleStyle: { fontWeight: '700' as const, fontSize: 17 },
       })}
     >
       <Tab.Screen
@@ -106,6 +111,17 @@ const AppNavigator = () => {
   const { theme } = useTheme();
   const { user } = useAuth();
 
+  // Reusable back button for screens with custom headers
+  const BackButton = ({ navigation }: { navigation: any }) => (
+    <TouchableOpacity
+      onPress={() => navigation.goBack()}
+      style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+      activeOpacity={0.7}
+    >
+      <Ionicons name="arrow-back" size={22} color={theme.foreground} />
+    </TouchableOpacity>
+  );
+
   const stackScreenOptions = {
     headerStyle: {
       backgroundColor: theme.background,
@@ -115,27 +131,41 @@ const AppNavigator = () => {
       borderBottomColor: theme.border,
     },
     headerTintColor: theme.foreground,
-    headerTitleStyle: { fontWeight: '700' as const, fontSize: 18 },
+    headerTitleStyle: { fontWeight: '700' as const, fontSize: 17 },
     cardStyle: { backgroundColor: theme.background },
+    headerLeft: ({ canGoBack, navigation }: any) =>
+      canGoBack ? <BackButton navigation={navigation} /> : undefined,
   };
 
   return (
     <Stack.Navigator screenOptions={stackScreenOptions}>
       {user ? (
         <>
-          <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-          <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Help & Support' }} />
-          <Stack.Screen name="JobFilters" component={JobFiltersScreen} options={{ title: 'Job Preferences' }} />
-          <Stack.Screen name="ResumeUpload" component={ResumeUploadScreen} options={{ title: 'Resume' }} />
-          <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Chat' }} />
-          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
-          {/* Keep legacy route names for any existing navigate() calls */}
-          <Stack.Screen name="Jobs" component={JobSwipeScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Main"          component={MainTabs}          options={{ headerShown: false }} />
+          <Stack.Screen name="Settings"      component={SettingsScreen}    options={{ title: 'Settings' }} />
+          <Stack.Screen name="Help"          component={HelpScreen}        options={{ title: 'Help & Support' }} />
+          <Stack.Screen name="JobFilters"    component={JobFiltersScreen}  options={{ title: 'Job Preferences' }} />
+          <Stack.Screen name="ResumeUpload"  component={ResumeUploadScreen} options={{ title: 'Resume' }} />
+          <Stack.Screen name="ResumeBuilder" component={ResumeBuilderScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="CoverLetter"   component={CoverLetterScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Privacy"       component={PrivacyPolicyScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Chat"          component={ChatScreen}        options={{ title: 'Chat' }} />
+          <Stack.Screen
+            name="Notifications"
+            component={NotificationsScreen}
+            options={({ navigation }) => ({
+              headerShown: true,
+              title: 'Notifications',
+              headerLeft: () => <BackButton navigation={navigation} />,
+            })}
+          />
+          {/* Legacy route aliases */}
+          <Stack.Screen name="Jobs"          component={JobSwipeScreen}    options={{ headerShown: false }} />
         </>
       ) : (
         <>
-          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Login"         component={LoginScreen}       options={{ headerShown: false }} />
+          <Stack.Screen name="Register"      component={RegisterScreen}    options={{ headerShown: false }} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
         </>
       )}

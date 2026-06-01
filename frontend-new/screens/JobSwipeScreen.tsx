@@ -100,6 +100,16 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   const activeCount = mode === 'jobs' ? jobs.length : NETWORK_PROFILES.length;
   const activeRemaining = mode === 'jobs' ? remainingJobs.length : remainingProfiles.length;
 
+  // ─── Reset animation whenever the active card changes ────────────────────
+  // This is the fix for the "faded card" bug: after a swipe, translateX stays
+  // at SCREEN_WIDTH * 1.6. The next card inherits that value and the APPLY
+  // label (with white background) floats over it, making text look faded.
+  useEffect(() => {
+    translateX.value = 0;
+    translateY.value = 0;
+    isDragging.value = 0;
+  }, [currentJob?.id, currentProfile?.id]);
+
   // ─── AI: analyze the current card whenever it changes ────────────────────
   useEffect(() => {
     if (!currentJob || aiScores[currentJob.id] || analyzingId === currentJob.id) return;
