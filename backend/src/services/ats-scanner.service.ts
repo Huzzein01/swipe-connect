@@ -222,18 +222,64 @@ const fetchWorkday = async (portal: Portal): Promise<NormalizedJob[]> => {
   });
 };
 
+// ─── Workable ─────────────────────────────────────────────────────────────────
+
+const fetchWorkable = async (portal: Portal): Promise<NormalizedJob[]> => {
+  const res = await get(`https://apply.workable.com/api/v3/accounts/${portal.slug}/jobs`, {
+    params: { details: 'true', limit: 20 },
+  });
+  const results: any[] = res.data?.results || [];
+  return results.slice(0, MAX_PER_COMPANY).map((j) => {
+    const description = stripHtml(j.description || j.requirements || '');
+    return buildJob({
+      id: `workable-${portal.slug}-${j.shortcode || j.id}`,
+      title: j.title,
+      company: portal.company,
+      location: j.location?.location_str || j.city || 'Not specified',
+      description,
+      requirements: inferRequirements(`${j.title} ${description} ${(j.skills || []).join(' ')}`),
+      type: inferType(j.employment_type || ''),
+      applicationUrl: `https://apply.workable.com/${portal.slug}/j/${j.shortcode || j.id}`,
+    }, portal);
+  });
+};
+
+// ─── SmartRecruiters ──────────────────────────────────────────────────────────
+
+const fetchSmartRecruiters = async (portal: Portal): Promise<NormalizedJob[]> => {
+  const res = await get(`https://api.smartrecruiters.com/v1/companies/${portal.slug}/postings`, {
+    params: { status: 'PUBLIC', limit: 20 },
+  });
+  const content: any[] = res.data?.content || [];
+  return content.slice(0, MAX_PER_COMPANY).map((j) => {
+    const description = stripHtml(j.jobAd?.sections?.jobDescription?.text || '');
+    return buildJob({
+      id: `smartrecruiters-${portal.slug}-${j.id}`,
+      title: j.name,
+      company: portal.company,
+      location: j.location?.city ? `${j.location.city}, ${j.location.country}` : 'Not specified',
+      description,
+      requirements: inferRequirements(`${j.name} ${description}`),
+      type: inferType(j.typeOfEmployment?.label || ''),
+      applicationUrl: j.ref || `https://jobs.smartrecruiters.com/${portal.slug}/${j.id}`,
+    }, portal);
+  });
+};
+
 // ─── Per-provider dispatcher ──────────────────────────────────────────────────
 
 const fetchPortal = async (portal: Portal): Promise<NormalizedJob[]> => {
   try {
     switch (portal.ats) {
-      case 'greenhouse': return await fetchGreenhouse(portal);
-      case 'ashby':      return await fetchAshby(portal);
-      case 'lever':      return await fetchLever(portal);
-      case 'bamboohr':   return await fetchBambooHR(portal);
-      case 'teamtailor': return await fetchTeamtailor(portal);
-      case 'workday':    return await fetchWorkday(portal);
-      default:           return [];
+      case 'greenhouse':      return await fetchGreenhouse(portal);
+      case 'ashby':           return await fetchAshby(portal);
+      case 'lever':           return await fetchLever(portal);
+      case 'bamboohr':        return await fetchBambooHR(portal);
+      case 'teamtailor':      return await fetchTeamtailor(portal);
+      case 'workday':         return await fetchWorkday(portal);
+      case 'workable':        return await fetchWorkable(portal);
+      case 'smartrecruiters': return await fetchSmartRecruiters(portal);
+      default:                return [];
     }
   } catch (err: any) {
     // Silently skip unreachable portals — never fail the full scan

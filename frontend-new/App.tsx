@@ -7,6 +7,7 @@ import { DemoProvider } from './contexts/DemoContext';
 import { NetworkProvider } from './contexts/NetworkContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { PremiumProvider } from './contexts/PremiumContext';
+import { UserProfileProvider } from './contexts/UserProfileContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import AppNavigator from './navigation/AppNavigator';
 
@@ -29,7 +30,9 @@ export default function App() {
             <NetworkProvider>
               <NotificationProvider>
                 <PremiumProvider>
-                  <ThemedApp />
+                  <UserProfileProvider>
+                    <ThemedApp />
+                  </UserProfileProvider>
                 </PremiumProvider>
               </NotificationProvider>
             </NetworkProvider>

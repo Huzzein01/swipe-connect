@@ -4,7 +4,7 @@
  * Zero LLM tokens — pure HTTP calls to structured ATS APIs.
  */
 
-export type AtsProvider = 'greenhouse' | 'ashby' | 'lever' | 'bamboohr' | 'teamtailor' | 'workday';
+export type AtsProvider = 'greenhouse' | 'ashby' | 'lever' | 'bamboohr' | 'teamtailor' | 'workday' | 'workable' | 'smartrecruiters';
 
 export type Portal = {
   company: string;          // Display name
@@ -83,6 +83,18 @@ export const PORTALS: Portal[] = [
   // ─── Workday ─────────────────────────────────────────────────────────────
   { company: 'Salesforce',       slug: 'salesforce',       ats: 'workday', industry: 'SaaS', stage: 'Public', workdayShard: 'salesforce', workdaySite: 'External_Career_Site' },
   { company: 'Adobe',            slug: 'adobe',            ats: 'workday', industry: 'SaaS', stage: 'Public', workdayShard: 'adobe',      workdaySite: 'External_Career_Site' },
+
+  // ─── Workable ────────────────────────────────────────────────────────────
+  { company: 'Typeform',         slug: 'typeform',         ats: 'workable', industry: 'SaaS', stage: 'Series C' },
+  { company: 'Skroutz',         slug: 'skroutz',          ats: 'workable', industry: 'Marketplace', stage: 'Growth' },
+  { company: 'Intercom',        slug: 'intercom',         ats: 'workable', industry: 'SaaS', stage: 'Growth' },
+  { company: 'Personio',        slug: 'personio',         ats: 'workable', industry: 'HR Tech', stage: 'Series E' },
+  { company: 'Hotjar',          slug: 'hotjar',           ats: 'workable', industry: 'Analytics', stage: 'Acquired' },
+
+  // ─── SmartRecruiters ─────────────────────────────────────────────────────
+  { company: 'Visa',            slug: 'visa',             ats: 'smartrecruiters', industry: 'Fintech', stage: 'Public' },
+  { company: 'Ubisoft',         slug: 'ubisoft',          ats: 'smartrecruiters', industry: 'Gaming', stage: 'Public' },
+  { company: 'Bosch',           slug: 'bosch',            ats: 'smartrecruiters', industry: 'Enterprise', stage: 'Public' },
 ];
 
 /** Lookup by ATS type for bulk scans */

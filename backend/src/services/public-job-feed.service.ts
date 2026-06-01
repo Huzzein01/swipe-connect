@@ -252,13 +252,16 @@ const normalizeArbeitnowJob = (job: any, skills?: string[]): NormalizedJob => {
 export class PublicJobFeedService {
   async fetchJobs(options: FeedOptions = {}): Promise<NormalizedJob[]> {
     const query = options.query || 'react native product manager data analyst';
-    const limit = options.limit || 60;
+    const limit = options.limit || 80;
 
-    // Run public feeds + ATS quick-scan concurrently
-    const [himalayas, remotive, arbeitnow, atsJobs] = await Promise.allSettled([
+    // Run all public feeds + ATS quick-scan concurrently
+    const [himalayas, remotive, arbeitnow, remoteOk, wwr, muse, atsJobs] = await Promise.allSettled([
       this.fetchHimalayas(query, options.skills),
       this.fetchRemotive(query, options.skills),
       this.fetchArbeitnow(options.skills),
+      this.fetchRemoteOK(options.skills),
+      this.fetchWeWorkRemotely(options.skills),
+      this.fetchTheMuse(query, options.skills),
       this.fetchAtsJobs(options.skills),
     ]);
 
@@ -266,6 +269,9 @@ export class PublicJobFeedService {
       ...(himalayas.status === 'fulfilled' ? himalayas.value : []),
       ...(remotive.status === 'fulfilled' ? remotive.value : []),
       ...(arbeitnow.status === 'fulfilled' ? arbeitnow.value : []),
+      ...(remoteOk.status === 'fulfilled' ? remoteOk.value : []),
+      ...(wwr.status === 'fulfilled' ? wwr.value : []),
+      ...(muse.status === 'fulfilled' ? muse.value : []),
       ...(atsJobs.status === 'fulfilled' ? atsJobs.value : []),
     ];
 
@@ -285,9 +291,140 @@ export class PublicJobFeedService {
 
   private async fetchAtsJobs(skills?: string[]): Promise<NormalizedJob[]> {
     try {
-      // Lazy import to avoid circular deps
       const { atsScannerService } = await import('./ats-scanner.service');
       return await atsScannerService.quickScan({ limit: 80 });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * RemoteOK — https://remoteok.com/api
+   * Zero auth, JSON array (first item is metadata, skip it).
+   */
+  private async fetchRemoteOK(skills?: string[]): Promise<NormalizedJob[]> {
+    try {
+      const response = await axios.get('https://remoteok.com/api', {
+        timeout: REQUEST_TIMEOUT_MS,
+        headers: { 'User-Agent': 'SwipeConnect/1.0 job-aggregator' },
+      });
+      const data: any[] = Array.isArray(response.data) ? response.data.slice(1, 21) : [];
+      return data.map((j) => {
+        const description = stripHtml(j.description || '');
+        const requirements = inferRequirements(
+          `${j.position || ''} ${description} ${(j.tags || []).join(' ')}`,
+          (j.tags || []).slice(0, 4)
+        );
+        const normalized: NormalizedJob = {
+          id: `remoteok-${j.id || j.slug}`,
+          title: j.position || j.title || 'Software Engineer',
+          company: j.company || 'Remote Company',
+          location: 'Remote',
+          description,
+          requirements,
+          type: 'full-time',
+          industry: (j.tags || [])[0] || 'Remote',
+          postedDate: j.date ? new Date(j.date * 1000).toISOString() : new Date().toISOString(),
+          remote: true,
+          companyLogo: j.company_logo,
+          source: { name: 'RemoteOK', url: j.url || 'https://remoteok.com', id: String(j.id || j.slug) },
+          applicationUrl: j.apply_url || j.url || 'https://remoteok.com',
+          matchScore: 0,
+          companyStage: 'Remote company',
+          workStyle: 'Remote-first',
+          whyMatch: [],
+        };
+        normalized.matchScore = scoreJob(`${normalized.title} ${normalized.description}`, skills);
+        normalized.whyMatch = whyMatch(normalized, skills);
+        return normalized;
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * We Work Remotely — RSS feed, no auth.
+   * https://weworkremotely.com/remote-jobs.rss
+   */
+  private async fetchWeWorkRemotely(skills?: string[]): Promise<NormalizedJob[]> {
+    try {
+      const response = await axios.get('https://weworkremotely.com/remote-jobs.rss', {
+        timeout: REQUEST_TIMEOUT_MS,
+        headers: { 'User-Agent': 'SwipeConnect/1.0 job-aggregator' },
+      });
+      const xml: string = typeof response.data === 'string' ? response.data : '';
+      const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
+      return items.slice(0, 20).map((raw, i) => {
+        const title = (raw.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || raw.match(/<title>(.*?)<\/title>/))?.[1]?.trim() || '';
+        const link = (raw.match(/<link>(.*?)<\/link>/) || [])?.[1]?.trim() || '';
+        const desc = stripHtml((raw.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) || [])?.[1] || '');
+        const company = (raw.match(/<region><!\[CDATA\[(.*?)\]\]><\/region>/) || [])?.[1]?.trim() || 'Remote Company';
+        const requirements = inferRequirements(`${title} ${desc}`);
+        const normalized: NormalizedJob = {
+          id: `wwr-${i}-${title.replace(/\s+/g, '-').toLowerCase().slice(0, 30)}`,
+          title,
+          company,
+          location: 'Remote',
+          description: desc,
+          requirements,
+          type: inferType(title),
+          industry: 'Remote',
+          postedDate: new Date().toISOString(),
+          remote: true,
+          source: { name: 'We Work Remotely', url: link, id: link },
+          applicationUrl: link,
+          matchScore: 0,
+          companyStage: 'Remote company',
+          workStyle: 'Remote',
+          whyMatch: [],
+        };
+        normalized.matchScore = scoreJob(`${normalized.title} ${normalized.description}`, skills);
+        normalized.whyMatch = whyMatch(normalized, skills);
+        return normalized;
+      }).filter((j) => j.title && j.applicationUrl);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * The Muse API — free, no auth required for public listings.
+   * https://www.themuse.com/api/public/jobs?page=0
+   */
+  private async fetchTheMuse(query: string, skills?: string[]): Promise<NormalizedJob[]> {
+    try {
+      const response = await axios.get('https://www.themuse.com/api/public/jobs', {
+        timeout: REQUEST_TIMEOUT_MS,
+        params: { page: 0, descending: true },
+      });
+      const results: any[] = response.data?.results || [];
+      return results.slice(0, 20).map((j) => {
+        const description = stripHtml(j.contents || '');
+        const requirements = inferRequirements(`${j.name} ${description}`);
+        const location = j.locations?.[0]?.name || 'Not specified';
+        const normalized: NormalizedJob = {
+          id: `muse-${j.id}`,
+          title: j.name,
+          company: j.company?.name || 'Unknown Company',
+          location,
+          description,
+          requirements,
+          type: inferType(j.type || ''),
+          industry: j.categories?.[0]?.name || j.levels?.[0]?.name || 'General',
+          postedDate: j.publication_date || new Date().toISOString(),
+          remote: /remote/i.test(location),
+          source: { name: 'The Muse', url: j.refs?.landing_page || 'https://www.themuse.com', id: String(j.id) },
+          applicationUrl: j.refs?.landing_page || 'https://www.themuse.com',
+          matchScore: 0,
+          companyStage: 'Established company',
+          workStyle: /remote/i.test(location) ? 'Remote' : 'On-site',
+          whyMatch: [],
+        };
+        normalized.matchScore = scoreJob(`${normalized.title} ${normalized.description}`, skills);
+        normalized.whyMatch = whyMatch(normalized, skills);
+        return normalized;
+      });
     } catch {
       return [];
     }
