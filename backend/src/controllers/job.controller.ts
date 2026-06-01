@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { JobService } from '../services/job.service';
 import { ApplicationService } from '../services/application.service';
+import { atsScannerService } from '../services/ats-scanner.service';
 
 const jobService = new JobService();
 const applicationService = new ApplicationService();
@@ -78,6 +79,39 @@ export const scrapeJobs = async (req: Request, res: Response, next: NextFunction
   try {
     await jobService.scrapeAndSaveJobs();
     res.json({ message: 'Jobs refreshed successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/jobs/scan
+ * Real-time ATS scan across Greenhouse, Ashby, Lever, BambooHR, Teamtailor, Workday.
+ * Query params: q (title filter), remote (true/false), limit, quick (true = Greenhouse+Ashby only)
+ */
+export const scanAtsJobs = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const titleFilter = req.query.q
+      ? String(req.query.q).split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    const remoteOnly = req.query.remote === 'true';
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 100, 300);
+    const quick = req.query.quick === 'true';
+
+    if (quick) {
+      const jobs = await atsScannerService.quickScan({ titleFilter, remoteOnly, limit });
+      return res.json({ jobs, source: 'ats-quick', count: jobs.length });
+    }
+
+    const result = await atsScannerService.scan({ titleFilter, remoteOnly, limit });
+    res.json({
+      jobs: result.jobs,
+      source: 'ats-full',
+      count: result.jobs.length,
+      portalsScanned: result.portalsScanned,
+      portalsSucceeded: result.portalsSucceeded,
+      durationMs: result.durationMs,
+    });
   } catch (error) {
     next(error);
   }

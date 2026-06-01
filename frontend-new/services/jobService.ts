@@ -89,10 +89,32 @@ export const jobService = {
   getJobs: async (preferences?: UserPreferences): Promise<Job[]> => {
     try {
       const query = encodeURIComponent(queryFromPreferences(preferences));
-      const data = await requestJson<{ jobs: Job[] }>(`/jobs?q=${query}&limit=48`);
-      return buildSimulatedJobDeck(data.jobs.length > 0 ? data.jobs : fallbackJobs, preferences, 1000);
+      const remote = preferences?.remote ? '&remote=true' : '';
+
+      // Fetch both general feed and real-time ATS scan in parallel
+      const [feedResult, scanResult] = await Promise.allSettled([
+        requestJson<{ jobs: Job[] }>(`/jobs?q=${query}&limit=40`),
+        requestJson<{ jobs: Job[] }>(`/jobs/scan?q=${query}&limit=80&quick=true${remote}`),
+      ]);
+
+      const feedJobs = feedResult.status === 'fulfilled' ? feedResult.value.jobs : [];
+      const scanJobs = scanResult.status === 'fulfilled' ? scanResult.value.jobs : [];
+
+      // Merge and deduplicate by company+title
+      const seen = new Set<string>();
+      const merged: Job[] = [];
+      for (const job of [...scanJobs, ...feedJobs]) {
+        const key = `${job.company?.toLowerCase()}-${job.title?.toLowerCase()}`;
+        if (!seen.has(key) && job.title && job.applicationUrl) {
+          seen.add(key);
+          merged.push(job);
+        }
+      }
+
+      const source = merged.length > 0 ? merged : fallbackJobs;
+      return buildSimulatedJobDeck(source, preferences, 1000);
     } catch (error) {
-      console.warn('Using local job fallback because the backend job feed is unavailable.', error);
+      console.warn('Using local job fallback because the backend is unavailable.', error);
       return buildSimulatedJobDeck(fallbackJobs, preferences, 1000);
     }
   },

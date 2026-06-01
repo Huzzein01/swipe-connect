@@ -4,6 +4,7 @@ import {
   getJobs,
   listApplications,
   saveJob,
+  scanAtsJobs,
   scrapeJobs,
   swipeJob,
 } from '../controllers/job.controller';
@@ -11,6 +12,7 @@ import {
 const router = express.Router();
 
 router.get('/', getJobs);
+router.get('/scan', scanAtsJobs);          // Real-time ATS scan
 router.post('/apply', applyToJob);
 router.get('/applications', listApplications);
 router.post('/scrape', scrapeJobs);

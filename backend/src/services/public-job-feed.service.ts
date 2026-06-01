@@ -252,18 +252,21 @@ const normalizeArbeitnowJob = (job: any, skills?: string[]): NormalizedJob => {
 export class PublicJobFeedService {
   async fetchJobs(options: FeedOptions = {}): Promise<NormalizedJob[]> {
     const query = options.query || 'react native product manager data analyst';
-    const limit = options.limit || 24;
+    const limit = options.limit || 60;
 
-    const [himalayas, remotive, arbeitnow] = await Promise.allSettled([
+    // Run public feeds + ATS quick-scan concurrently
+    const [himalayas, remotive, arbeitnow, atsJobs] = await Promise.allSettled([
       this.fetchHimalayas(query, options.skills),
       this.fetchRemotive(query, options.skills),
       this.fetchArbeitnow(options.skills),
+      this.fetchAtsJobs(options.skills),
     ]);
 
     const jobs = [
       ...(himalayas.status === 'fulfilled' ? himalayas.value : []),
       ...(remotive.status === 'fulfilled' ? remotive.value : []),
       ...(arbeitnow.status === 'fulfilled' ? arbeitnow.value : []),
+      ...(atsJobs.status === 'fulfilled' ? atsJobs.value : []),
     ];
 
     const deduped = new Map<string, NormalizedJob>();
@@ -278,6 +281,16 @@ export class PublicJobFeedService {
       .slice(0, limit);
 
     return normalizedJobs.length > 0 ? normalizedJobs : fallbackJobs;
+  }
+
+  private async fetchAtsJobs(skills?: string[]): Promise<NormalizedJob[]> {
+    try {
+      // Lazy import to avoid circular deps
+      const { atsScannerService } = await import('./ats-scanner.service');
+      return await atsScannerService.quickScan({ limit: 80 });
+    } catch {
+      return [];
+    }
   }
 
   private async fetchHimalayas(query: string, skills?: string[]) {
