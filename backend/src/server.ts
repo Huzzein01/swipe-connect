@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.routes';
 import jobRoutes from './routes/job.routes';
 import startupRoutes from './routes/startup.routes';
 import userRoutes from './routes/user.routes';
+import aiRoutes from './routes/ai.routes';
 import './config/passport';
 
 const app = express();
@@ -52,6 +53,7 @@ app.use('/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/startups', startupRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.get('/health', (_req, res) => {
   res.json({

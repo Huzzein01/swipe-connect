@@ -15,6 +15,7 @@ import { useDemo } from '../contexts/DemoContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { UserPreferences } from '../types/job';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
+import MapLocationPicker from '../components/MapLocationPicker';
 
 type JobFiltersScreenProps = {
   navigation: any;
@@ -45,33 +46,35 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Location</Text>
           <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: theme.mutedForeground }]}>City</Text>
-              <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
-                <Ionicons name="location-outline" size={18} color={theme.mutedForeground} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: theme.foreground }]}
-                  placeholder="e.g. San Francisco"
-                  placeholderTextColor={theme.mutedForeground}
-                  value={preferences.location.city}
-                  onChangeText={(text) =>
-                    setPreferences({ ...preferences, location: { ...preferences.location, city: text } })
-                  }
-                />
+            <View style={styles.locationRow}>
+              <View style={[styles.fieldGroup, { flex: 2 }]}>
+                <Text style={[styles.label, { color: theme.mutedForeground }]}>City</Text>
+                <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
+                  <Ionicons name="location-outline" size={18} color={theme.mutedForeground} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { color: theme.foreground }]}
+                    placeholder="e.g. Chicago"
+                    placeholderTextColor={theme.mutedForeground}
+                    value={preferences.location.city}
+                    onChangeText={(text) =>
+                      setPreferences({ ...preferences, location: { ...preferences.location, city: text } })
+                    }
+                  />
+                </View>
               </View>
-            </View>
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: theme.mutedForeground }]}>State</Text>
-              <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
-                <TextInput
-                  style={[styles.input, { color: theme.foreground, paddingLeft: Spacing.md }]}
-                  placeholder="e.g. CA"
-                  placeholderTextColor={theme.mutedForeground}
-                  value={preferences.location.state}
-                  onChangeText={(text) =>
-                    setPreferences({ ...preferences, location: { ...preferences.location, state: text } })
-                  }
-                />
+              <View style={[styles.fieldGroup, { flex: 1 }]}>
+                <Text style={[styles.label, { color: theme.mutedForeground }]}>State</Text>
+                <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
+                  <TextInput
+                    style={[styles.input, { color: theme.foreground, paddingLeft: Spacing.md }]}
+                    placeholder="IL"
+                    placeholderTextColor={theme.mutedForeground}
+                    value={preferences.location.state}
+                    onChangeText={(text) =>
+                      setPreferences({ ...preferences, location: { ...preferences.location, state: text } })
+                    }
+                  />
+                </View>
               </View>
             </View>
             <View style={styles.fieldGroup}>
@@ -92,6 +95,18 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
                 />
               </View>
             </View>
+          </View>
+
+          {/* Live map */}
+          <View style={{ marginTop: Spacing.md }}>
+            <MapLocationPicker
+              city={preferences.location.city}
+              state={preferences.location.state}
+              height={260}
+              onLocationSelect={(city, state) =>
+                setPreferences({ ...preferences, location: { ...preferences.location, city, state } })
+              }
+            />
           </View>
         </View>
 
@@ -212,6 +227,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: Spacing.lg,
   },
+  locationRow: { flexDirection: 'row', gap: Spacing.md },
   fieldGroup: { marginBottom: Spacing.md },
   label: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, marginBottom: Spacing.sm },
   inputWrapper: {

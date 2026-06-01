@@ -20,6 +20,8 @@ import JobFiltersScreen from '../screens/JobFiltersScreen';
 import ResumeUploadScreen from '../screens/ResumeUploadScreen';
 import MatchesScreen from '../screens/MatchesScreen';
 import ChatScreen from '../screens/ChatScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import NotificationBell from '../components/NotificationBell';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -82,7 +84,18 @@ const MainTabs = () => {
         headerTitleStyle: { fontWeight: '700' as const, fontSize: 18 },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={({ navigation }) => ({
+          title: 'Home',
+          headerRight: () => (
+            <View style={{ marginRight: 16 }}>
+              <NotificationBell onPress={() => navigation.navigate('Notifications')} />
+            </View>
+          ),
+        })}
+      />
       <Tab.Screen name="Discover" component={JobSwipeScreen} options={{ headerShown: false, title: 'Discover' }} />
       <Tab.Screen name="Matches" component={MatchesScreen} options={{ headerShown: false, title: 'Matches' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
@@ -116,6 +129,7 @@ const AppNavigator = () => {
           <Stack.Screen name="JobFilters" component={JobFiltersScreen} options={{ title: 'Job Preferences' }} />
           <Stack.Screen name="ResumeUpload" component={ResumeUploadScreen} options={{ title: 'Resume' }} />
           <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Chat' }} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: false }} />
           {/* Keep legacy route names for any existing navigate() calls */}
           <Stack.Screen name="Jobs" component={JobSwipeScreen} options={{ headerShown: false }} />
         </>

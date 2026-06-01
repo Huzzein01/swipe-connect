@@ -26,6 +26,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useDemo } from '../contexts/DemoContext';
 import { useNetwork, NETWORK_PROFILES, NetworkProfile } from '../contexts/NetworkContext';
+import { usePremium } from '../contexts/PremiumContext';
+import { useNotifications } from '../contexts/NotificationContext';
+import { analyzeJobMatch, tailorResumeForJob, MatchAnalysis, TailoredResume } from '../services/aiService';
 import { jobService } from '../services/jobService';
 import { detailSectionsForJob, summarizeDescription } from '../services/simulatedJobs';
 import { Job } from '../types/job';
@@ -43,6 +46,8 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   const { user } = useAuth();
   const { preferences, resume } = useDemo();
   const { addMatch } = useNetwork();
+  const { aiTailorEnabled } = usePremium();
+  const { addNotification } = useNotifications();
 
   const [mode, setMode] = useState<DeckMode>('jobs');
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -55,6 +60,14 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [detailJob, setDetailJob] = useState<Job | null>(null);
   const [detailProfile, setDetailProfile] = useState<NetworkProfile | null>(null);
+
+  // AI match analysis cache: jobId → MatchAnalysis
+  const [aiScores, setAiScores] = useState<Record<string, MatchAnalysis>>({});
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+
+  // AI tailor state
+  const [tailorModal, setTailorModal] = useState<{ job: Job; result: TailoredResume } | null>(null);
+  const [isTailoring, setIsTailoring] = useState(false);
 
   // ─── Shared animation values (declared first — used in gesture below) ──────
   const translateX = useSharedValue(0);
@@ -87,37 +100,85 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   const activeCount = mode === 'jobs' ? jobs.length : NETWORK_PROFILES.length;
   const activeRemaining = mode === 'jobs' ? remainingJobs.length : remainingProfiles.length;
 
+  // ─── AI: analyze the current card whenever it changes ────────────────────
+  useEffect(() => {
+    if (!currentJob || aiScores[currentJob.id] || analyzingId === currentJob.id) return;
+    setAnalyzingId(currentJob.id);
+    analyzeJobMatch(currentJob, resume).then((result) => {
+      setAiScores((prev) => ({ ...prev, [currentJob.id]: result }));
+      setAnalyzingId(null);
+    });
+  }, [currentJob?.id]);
+
   // ─── Swipe logic ──────────────────────────────────────────────────────────
   const resetCard = useCallback(() => {
     translateX.value = withSpring(0, { damping: 20, stiffness: 200 });
     translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
   }, []);
 
+  const applyToJobAndNotify = useCallback(async (job: Job) => {
+    setIsSubmitting(true);
+    try {
+      await jobService.recordSwipe(job.id, 'like');
+      const app = await jobService.applyToJob(job, {
+        id: user?.uid, name: user?.displayName, email: user?.email, phone: resume?.parsedData.phone,
+      }, resume);
+      setReviewedJobIds((ids) => [...new Set([...ids, job.id])]);
+      setAppliedJobIds((ids) => [...new Set([...ids, job.id])]);
+      const emailSent = Boolean(app.email?.sent);
+      setStatusMessage(emailSent ? `Applied to ${job.company}. Confirmation email sent ✉️` : `Applied to ${job.company}.`);
+      // Fire in-app notification
+      addNotification({
+        type: 'application',
+        title: `Application submitted — ${job.title}`,
+        body: `You applied to ${job.title} at ${job.company}. ${emailSent ? 'A confirmation email has been sent to you.' : 'Application queued.'}`,
+        meta: {
+          jobId: job.id,
+          jobTitle: job.title,
+          company: job.company,
+          applicationUrl: job.applicationUrl,
+          emailSent,
+        },
+      });
+    } catch {
+      setReviewedJobIds((ids) => [...new Set([...ids, job.id])]);
+      setAppliedJobIds((ids) => [...new Set([...ids, job.id])]);
+      setStatusMessage(`Applied locally to ${job.company}.`);
+      addNotification({
+        type: 'application',
+        title: `Application queued — ${job.title}`,
+        body: `Application to ${job.title} at ${job.company} was queued locally.`,
+        meta: { jobId: job.id, jobTitle: job.title, company: job.company, emailSent: false },
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [user, resume, addNotification]);
+
   const handleJobSwipe = useCallback(async (direction: 'left' | 'right') => {
     if (!currentJob || isSubmitting) return;
     if (direction === 'right') {
-      setIsSubmitting(true);
-      try {
-        await jobService.recordSwipe(currentJob.id, 'like');
-        const app = await jobService.applyToJob(currentJob, {
-          id: user?.uid, name: user?.displayName, email: user?.email, phone: resume?.parsedData.phone,
-        }, resume);
-        setReviewedJobIds((ids) => [...new Set([...ids, currentJob.id])]);
-        setAppliedJobIds((ids) => [...new Set([...ids, currentJob.id])]);
-        setStatusMessage(app.email?.sent ? `Applied to ${currentJob.company}. Confirmation sent.` : `Applied to ${currentJob.company}.`);
-      } catch {
-        setReviewedJobIds((ids) => [...new Set([...ids, currentJob.id])]);
-        setAppliedJobIds((ids) => [...new Set([...ids, currentJob.id])]);
-        setStatusMessage(`Applied locally to ${currentJob.company}.`);
-      } finally {
-        setIsSubmitting(false);
+      // If AI Tailor is on and user has a resume, show tailor modal first
+      if (aiTailorEnabled && resume) {
+        setIsTailoring(true);
+        try {
+          const tailored = await tailorResumeForJob(currentJob, resume);
+          setIsTailoring(false);
+          setTailorModal({ job: currentJob, result: tailored });
+        } catch {
+          setIsTailoring(false);
+          // Fallback: apply normally
+          await applyToJobAndNotify(currentJob);
+        }
+      } else {
+        await applyToJobAndNotify(currentJob);
       }
     } else {
       await jobService.recordSwipe(currentJob.id, 'dislike').catch(() => {});
       setReviewedJobIds((ids) => [...new Set([...ids, currentJob.id])]);
       setStatusMessage(`${currentJob.company} skipped.`);
     }
-  }, [currentJob, isSubmitting, user, resume]);
+  }, [currentJob, isSubmitting, aiTailorEnabled, resume, applyToJobAndNotify]);
 
   const handleNetworkSwipe = useCallback((direction: 'left' | 'right') => {
     if (!currentProfile) return;
@@ -232,9 +293,23 @@ const JobSwipeScreen = ({ navigation }: Props) => {
           <Text style={[styles.companyName, { color: theme.mutedForeground }]} numberOfLines={1}>{job.company}</Text>
           <Text style={[styles.jobTitle, { color: theme.foreground }]} numberOfLines={2}>{job.title}</Text>
         </View>
-        <View style={[styles.scoreBadge, { backgroundColor: `${theme.success}16` }]}>
-          <Text style={[styles.scoreText, { color: theme.success }]}>{job.matchScore || 78}%</Text>
-        </View>
+        {/* AI match score badge */}
+        {aiScores[job.id] ? (
+          <View style={[styles.scoreBadge, { backgroundColor: aiScores[job.id].recommendation === 'apply' ? `${theme.success}16` : `${theme.warning}16` }]}>
+            <Ionicons name="sparkles" size={11} color={aiScores[job.id].recommendation === 'apply' ? theme.success : theme.warning} />
+            <Text style={[styles.scoreText, { color: aiScores[job.id].recommendation === 'apply' ? theme.success : theme.warning }]}>
+              {aiScores[job.id].score}%
+            </Text>
+          </View>
+        ) : analyzingId === job.id ? (
+          <View style={[styles.scoreBadge, { backgroundColor: `${theme.primary}12` }]}>
+            <ActivityIndicator size="small" color={theme.primary} style={{ transform: [{ scale: 0.6 }] }} />
+          </View>
+        ) : (
+          <View style={[styles.scoreBadge, { backgroundColor: `${theme.success}16` }]}>
+            <Text style={[styles.scoreText, { color: theme.success }]}>{job.matchScore || 78}%</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.pillRow}>
@@ -268,13 +343,35 @@ const JobSwipeScreen = ({ navigation }: Props) => {
       {!preview && (
         <>
           <View style={styles.reasonSection}>
-            <Text style={[styles.boxLabel, { color: theme.mutedForeground }]}>Why it matches</Text>
-            {(job.whyMatch || ['Relevant role', 'Good culture fit']).slice(0, 3).map((r) => (
-              <View key={r} style={styles.reasonRow}>
-                <Ionicons name="checkmark-circle" size={15} color={theme.success} />
-                <Text style={[styles.reasonText, { color: theme.foreground }]} numberOfLines={1}>{r}</Text>
-              </View>
-            ))}
+            {aiScores[job.id] ? (
+              <>
+                <Text style={[styles.boxLabel, { color: theme.mutedForeground }]}>
+                  AI analysis · {aiScores[job.id].grade} grade
+                </Text>
+                {aiScores[job.id].strengths.slice(0, 2).map((r) => (
+                  <View key={r} style={styles.reasonRow}>
+                    <Ionicons name="checkmark-circle" size={15} color={theme.success} />
+                    <Text style={[styles.reasonText, { color: theme.foreground }]} numberOfLines={1}>{r}</Text>
+                  </View>
+                ))}
+                {aiScores[job.id].gaps.slice(0, 1).map((g) => (
+                  <View key={g} style={styles.reasonRow}>
+                    <Ionicons name="alert-circle-outline" size={15} color={theme.warning} />
+                    <Text style={[styles.reasonText, { color: theme.mutedForeground }]} numberOfLines={1}>{g}</Text>
+                  </View>
+                ))}
+              </>
+            ) : (
+              <>
+                <Text style={[styles.boxLabel, { color: theme.mutedForeground }]}>Why it matches</Text>
+                {(job.whyMatch || ['Relevant role', 'Good culture fit']).slice(0, 3).map((r) => (
+                  <View key={r} style={styles.reasonRow}>
+                    <Ionicons name="checkmark-circle" size={15} color={theme.success} />
+                    <Text style={[styles.reasonText, { color: theme.foreground }]} numberOfLines={1}>{r}</Text>
+                  </View>
+                ))}
+              </>
+            )}
           </View>
           <View style={styles.tagRow}>
             {job.requirements.slice(0, 4).map((s) => (
@@ -543,6 +640,79 @@ const JobSwipeScreen = ({ navigation }: Props) => {
         </View>
       </Modal>
 
+      {/* AI Tailoring loading overlay */}
+      <Modal visible={isTailoring} transparent animationType="fade">
+        <View style={styles.tailorOverlay}>
+          <View style={[styles.tailorBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.tailorTitle, { color: theme.foreground }]}>AI is tailoring your resume</Text>
+            <Text style={[styles.tailorSub, { color: theme.mutedForeground }]}>
+              Matching your experience to this role…
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AI Tailor review modal */}
+      <Modal visible={Boolean(tailorModal)} animationType="slide" transparent onRequestClose={() => setTailorModal(null)}>
+        <View style={styles.modalBg}>
+          <View style={[styles.modalSheet, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.tailorHeader}>
+              <View style={[styles.tailorIconBadge, { backgroundColor: `${theme.primary}15` }]}>
+                <Ionicons name="sparkles" size={22} color={theme.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.tailorTitle, { color: theme.foreground, marginTop: 0 }]}>
+                  Resume tailored to {tailorModal?.result.newScore}% match
+                </Text>
+                <Text style={[styles.tailorSub, { color: theme.mutedForeground }]}>{tailorModal?.result.summary}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setTailorModal(null)} style={[styles.closeBtn, { backgroundColor: theme.muted }]}>
+                <Ionicons name="close" size={18} color={theme.foreground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
+              {tailorModal?.result.changes.slice(0, 5).map((c, i) => (
+                <View key={i} style={[styles.changeCard, { borderColor: theme.border }]}>
+                  <Text style={[styles.changeSection, { color: theme.primary }]}>{c.section}</Text>
+                  <Text style={[styles.changeOld, { color: theme.mutedForeground }]} numberOfLines={2}>Before: {c.original}</Text>
+                  <Text style={[styles.changeNew, { color: theme.success }]} numberOfLines={2}>After: {c.improved}</Text>
+                </View>
+              ))}
+              <View style={[styles.tailoredPreview, { backgroundColor: `${theme.primary}08`, borderColor: `${theme.primary}22` }]}>
+                <Text style={[styles.boxLabel, { color: theme.primary }]}>Tailored resume preview</Text>
+                <Text style={[styles.bodyText, { color: theme.foreground }]} numberOfLines={8}>
+                  {tailorModal?.result.tailoredText}
+                </Text>
+              </View>
+            </ScrollView>
+            {/* Confirm / Skip buttons */}
+            <View style={styles.tailorActions}>
+              <TouchableOpacity
+                style={[styles.tailorSkipBtn, { borderColor: theme.border }]}
+                onPress={() => setTailorModal(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tailorSkipText, { color: theme.mutedForeground }]}>Skip & Apply Original</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tailorConfirmBtn, { backgroundColor: theme.primary }]}
+                onPress={async () => {
+                  const job = tailorModal!.job;
+                  setTailorModal(null);
+                  await applyToJobAndNotify(job);
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="sparkles" size={16} color="#fff" />
+                <Text style={styles.tailorConfirmText}>Apply with Tailored Resume</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Network profile modal */}
       <Modal visible={Boolean(detailProfile)} animationType="slide" transparent onRequestClose={() => setDetailProfile(null)}>
         <View style={styles.modalBg}>
@@ -666,6 +836,23 @@ const styles = StyleSheet.create({
   detailSection: { fontSize: FontSize.sm, fontWeight: FontWeight.extrabold, marginTop: Spacing.lg, marginBottom: Spacing.sm },
   detailBody: { fontSize: FontSize.md, lineHeight: 24 },
   detailBullet: { fontSize: FontSize.md, lineHeight: 24, marginBottom: Spacing.xs },
+  // AI tailor
+  tailorOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: Spacing['3xl'] },
+  tailorBox: { borderRadius: BorderRadius['2xl'], borderWidth: 1, padding: Spacing['3xl'], alignItems: 'center', gap: Spacing.md, width: '100%' },
+  tailorHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md, marginBottom: Spacing.lg },
+  tailorIconBadge: { width: 48, height: 48, borderRadius: BorderRadius.xl, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  tailorTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginTop: Spacing.md },
+  tailorSub: { fontSize: FontSize.sm, lineHeight: 20, marginTop: 4 },
+  changeCard: { borderWidth: 1, borderRadius: BorderRadius.xl, padding: Spacing.md, marginBottom: Spacing.md },
+  changeSection: { fontSize: FontSize.xs, fontWeight: FontWeight.extrabold, marginBottom: Spacing.xs },
+  changeOld: { fontSize: FontSize.sm, lineHeight: 18, marginBottom: Spacing.xs },
+  changeNew: { fontSize: FontSize.sm, lineHeight: 18 },
+  tailoredPreview: { borderWidth: 1, borderRadius: BorderRadius.xl, padding: Spacing.lg, marginTop: Spacing.md },
+  tailorActions: { flexDirection: 'row', gap: Spacing.md, paddingTop: Spacing.lg },
+  tailorSkipBtn: { flex: 1, height: 48, borderRadius: BorderRadius.lg, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  tailorSkipText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  tailorConfirmBtn: { flex: 2, height: 48, borderRadius: BorderRadius.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
+  tailorConfirmText: { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 });
 
 export default JobSwipeScreen;

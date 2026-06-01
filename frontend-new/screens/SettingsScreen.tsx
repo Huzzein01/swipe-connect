@@ -16,12 +16,14 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { useDemo } from '../contexts/DemoContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { usePremium } from '../contexts/PremiumContext';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 const SettingsScreen = () => {
   const { theme, themeMode, setThemeMode } = useTheme();
   const { logout } = useAuth();
   const { resetDemo } = useDemo();
+  const { aiTailorEnabled, setAiTailorEnabled } = usePremium();
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
   const [biometricAuth, setBiometricAuth] = useState(false);
@@ -213,6 +215,47 @@ const SettingsScreen = () => {
           </View>
         </View>
 
+        {/* AI Features Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>AI Features</Text>
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowLeft}>
+                <View style={[styles.settingIconBox, { backgroundColor: `${theme.primary}15` }]}>
+                  <Ionicons name="sparkles-outline" size={20} color={theme.primary} />
+                </View>
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.settingLabel, { color: theme.foreground }]}>AI Resume Tailor</Text>
+                    <View style={{ backgroundColor: theme.primary, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}>
+                      <Text style={{ color: '#fff', fontSize: 9, fontWeight: FontWeight.extrabold }}>PREMIUM</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+              <Switch
+                value={aiTailorEnabled}
+                onValueChange={setAiTailorEnabled}
+                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
+                thumbColor={aiTailorEnabled ? theme.primary : '#f4f3f4'}
+              />
+            </View>
+            <Text style={[styles.settingDescription, { color: theme.mutedForeground }]}>
+              {aiTailorEnabled
+                ? 'Active — when you swipe right, AI will tailor your resume to 90%+ alignment with the job before applying.'
+                : 'When enabled, AI rewrites your resume to match each job description before you confirm a right swipe.'}
+            </Text>
+            {aiTailorEnabled && (
+              <View style={[styles.aiActiveTag, { backgroundColor: `${theme.primary}12`, borderColor: `${theme.primary}30` }]}>
+                <Ionicons name="checkmark-circle" size={14} color={theme.primary} />
+                <Text style={[{ fontSize: FontSize.xs, color: theme.primary, fontWeight: FontWeight.semibold }]}>
+                  AI Tailor is ON — requires ANTHROPIC_API_KEY in backend .env
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
         {/* Account Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Account</Text>
@@ -317,6 +360,16 @@ const styles = StyleSheet.create({
   dangerButtonText: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
+  },
+  aiActiveTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.sm,
+    marginTop: Spacing.sm,
+    marginLeft: 52,
   },
   versionText: {
     textAlign: 'center',
