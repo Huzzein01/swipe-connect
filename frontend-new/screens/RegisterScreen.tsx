@@ -8,130 +8,114 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  Alert,
   ActivityIndicator,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { jobService } from '../services/jobService';
 import { isValidEmail, getPasswordStrength, getPasswordStrengthColor } from '../utils/validation';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 import Logo from '../components/Logo';
 import KeyboardDismissWrapper from '../components/KeyboardDismissWrapper';
 
-type RegisterScreenProps = {
-  navigation: any;
-};
+type Props = { navigation: any };
 
-const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
+const RegisterScreen = ({ navigation }: Props) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState({ score: 0, feedback: '' });
+  const [strength, setStrength] = useState({ score: 0, feedback: '' });
   const [emailError, setEmailError] = useState('');
+  const [error, setError] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const { register, isLoading } = useAuth();
+  const { register, signInPreview, isLoading } = useAuth();
   const { theme, isDark } = useTheme();
 
   useEffect(() => {
-    if (password) {
-      setPasswordStrength(getPasswordStrength(password));
-    }
+    if (password) setStrength(getPasswordStrength(password));
   }, [password]);
 
-  const validateForm = (): boolean => {
-    if (!name.trim()) {
-      Alert.alert('Validation Error', 'Please enter your name.');
-      return false;
-    }
-    if (!email.trim()) {
-      Alert.alert('Validation Error', 'Please enter your email.');
-      return false;
-    }
-    if (!isValidEmail(email)) {
-      Alert.alert('Validation Error', 'Please enter a valid email address.');
-      return false;
-    }
-    if (!password) {
-      Alert.alert('Validation Error', 'Please enter a password.');
-      return false;
-    }
-    if (passwordStrength.score < 3) {
-      Alert.alert('Validation Error', 'Please choose a stronger password.');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert('Validation Error', 'Passwords do not match.');
-      return false;
-    }
-    if (!agreedToTerms) {
-      Alert.alert('Validation Error', 'Please agree to the Terms and Privacy Policy.');
-      return false;
-    }
-    return true;
+  const validate = (): string | null => {
+    if (!name.trim()) return 'Please enter your full name.';
+    if (!email.trim()) return 'Please enter your email address.';
+    if (!isValidEmail(email)) return 'Please enter a valid email address.';
+    if (!password) return 'Please choose a password.';
+    if (strength.score < 3) return 'Please choose a stronger password.';
+    if (password !== confirmPassword) return 'Passwords do not match.';
+    if (!agreedToTerms) return 'Please agree to the Terms and Privacy Policy.';
+    return null;
   };
 
   const handleRegister = async () => {
-    if (!validateForm()) return;
+    setError('');
+    const validationError = validate();
+    if (validationError) { setError(validationError); return; }
     try {
-      await register(email, password, name);
-    } catch (error) {
-      Alert.alert('Registration Error', 'Failed to create account. Please try again.');
+      await register(email.trim(), password, name.trim());
+    } catch (e: any) {
+      setError(e?.message || 'Failed to create account. Please try again.');
     }
   };
 
-  const handlePreviewRegister = async () => {
+  const handlePreview = async () => {
     try {
-      await register('preview@swipeconnect.app', 'preview-password', 'Preview User');
-    } catch (error) {
-      Alert.alert('Registration Error', 'Unable to open the preview account.');
+      await signInPreview();
+    } catch (e: any) {
+      setError(e?.message || 'Preview login unavailable.');
     }
   };
 
-  const strengthBarWidth = password ? `${(passwordStrength.score / 5) * 100}%` : '0%';
+  const handleLinkedIn = () => {
+    const backendRoot = jobService.apiBaseUrl.replace(/\/api$/, '');
+    const url = `${backendRoot}/auth/linkedin`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = url;
+    } else {
+      Linking.openURL(url).catch(() => setError('LinkedIn setup needed. Check backend .env.'));
+    }
+  };
+
+  const strengthBarWidth = password ? `${(strength.score / 5) * 100}%` : '0%';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <KeyboardDismissWrapper>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Logo */}
+        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={styles.logoRow}>
               <Logo size={56} color={theme.primary} />
             </View>
 
-            {/* Card */}
             <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={styles.headerSection}>
-                <Text style={[styles.title, { color: theme.foreground }]}>
-                  Join SwipeConnect
-                </Text>
-                <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>
-                  Start swiping your way to your dream job
-                </Text>
+              <View style={styles.heading}>
+                <Text style={[styles.title, { color: theme.foreground }]}>Join SwipeConnect</Text>
+                <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>Start swiping your way to your dream job</Text>
               </View>
 
-              {/* Full Name */}
-              <View style={styles.fieldGroup}>
+              {/* Error banner */}
+              {error ? (
+                <View style={[styles.errorBanner, { backgroundColor: `${theme.destructive}12`, borderColor: `${theme.destructive}40` }]}>
+                  <Ionicons name="alert-circle-outline" size={16} color={theme.destructive} />
+                  <Text style={[styles.errorText, { color: theme.destructive }]}>{error}</Text>
+                </View>
+              ) : null}
+
+              {/* Name */}
+              <View style={styles.field}>
                 <Text style={[styles.label, { color: theme.foreground }]}>Full Name</Text>
-                <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
+                <View style={[styles.inputWrap, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#fff' }]}>
                   <Ionicons name="person-outline" size={20} color={theme.mutedForeground} style={styles.inputIcon} />
                   <TextInput
                     style={[styles.input, { color: theme.foreground }]}
                     placeholder="John Doe"
                     placeholderTextColor={theme.mutedForeground}
                     value={name}
-                    onChangeText={setName}
+                    onChangeText={(t) => { setName(t); setError(''); }}
                     autoCapitalize="words"
                     textContentType="name"
                     editable={!isLoading}
@@ -140,21 +124,19 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
               </View>
 
               {/* Email */}
-              <View style={styles.fieldGroup}>
+              <View style={styles.field}>
                 <Text style={[styles.label, { color: theme.foreground }]}>Email Address</Text>
-                <View style={[
-                  styles.inputWrapper,
-                  { borderColor: emailError ? theme.destructive : theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' },
-                ]}>
+                <View style={[styles.inputWrap, { borderColor: emailError ? theme.destructive : theme.border, backgroundColor: isDark ? theme.card : '#fff' }]}>
                   <Ionicons name="mail-outline" size={20} color={theme.mutedForeground} style={styles.inputIcon} />
                   <TextInput
                     style={[styles.input, { color: theme.foreground }]}
                     placeholder="you@example.com"
                     placeholderTextColor={theme.mutedForeground}
                     value={email}
-                    onChangeText={(text) => {
-                      setEmail(text);
-                      setEmailError(text && !isValidEmail(text) ? 'Invalid email format' : '');
+                    onChangeText={(t) => {
+                      setEmail(t);
+                      setError('');
+                      setEmailError(t && !isValidEmail(t) ? 'Invalid email format' : '');
                     }}
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -162,65 +144,49 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
                     editable={!isLoading}
                   />
                 </View>
-                {emailError ? (
-                  <Text style={[styles.errorText, { color: theme.destructive }]}>{emailError}</Text>
-                ) : null}
+                {emailError ? <Text style={[styles.fieldError, { color: theme.destructive }]}>{emailError}</Text> : null}
               </View>
 
               {/* Password */}
-              <View style={styles.fieldGroup}>
+              <View style={styles.field}>
                 <Text style={[styles.label, { color: theme.foreground }]}>Password</Text>
-                <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
+                <View style={[styles.inputWrap, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#fff' }]}>
                   <Ionicons name="lock-closed-outline" size={20} color={theme.mutedForeground} style={styles.inputIcon} />
                   <TextInput
                     style={[styles.input, { color: theme.foreground }]}
                     placeholder="••••••••"
                     placeholderTextColor={theme.mutedForeground}
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(t) => { setPassword(t); setError(''); }}
                     secureTextEntry={!showPassword}
                     textContentType="newPassword"
                     editable={!isLoading}
                   />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                    <Ionicons
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
-                      color={theme.mutedForeground}
-                    />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eye}>
+                    <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.mutedForeground} />
                   </TouchableOpacity>
                 </View>
                 {password ? (
-                  <View style={styles.strengthContainer}>
+                  <View style={styles.strengthWrap}>
                     <View style={[styles.strengthBar, { backgroundColor: theme.muted }]}>
-                      <View
-                        style={[
-                          styles.strengthFill,
-                          {
-                            width: strengthBarWidth as any,
-                            backgroundColor: getPasswordStrengthColor(passwordStrength.score),
-                          },
-                        ]}
-                      />
+                      <View style={[styles.strengthFill, { width: strengthBarWidth as any, backgroundColor: getPasswordStrengthColor(strength.score) }]} />
                     </View>
-                    <Text style={[styles.strengthText, { color: theme.mutedForeground }]}>
-                      {passwordStrength.feedback}
-                    </Text>
+                    <Text style={[styles.strengthText, { color: theme.mutedForeground }]}>{strength.feedback}</Text>
                   </View>
                 ) : null}
               </View>
 
               {/* Confirm Password */}
-              <View style={styles.fieldGroup}>
+              <View style={styles.field}>
                 <Text style={[styles.label, { color: theme.foreground }]}>Confirm Password</Text>
-                <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
+                <View style={[styles.inputWrap, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#fff' }]}>
                   <Ionicons name="lock-closed-outline" size={20} color={theme.mutedForeground} style={styles.inputIcon} />
                   <TextInput
                     style={[styles.input, { color: theme.foreground }]}
                     placeholder="••••••••"
                     placeholderTextColor={theme.mutedForeground}
                     value={confirmPassword}
-                    onChangeText={setConfirmPassword}
+                    onChangeText={(t) => { setConfirmPassword(t); setError(''); }}
                     secureTextEntry={!showPassword}
                     textContentType="newPassword"
                     editable={!isLoading}
@@ -229,81 +195,62 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
               </View>
 
               {/* Terms */}
-              <TouchableOpacity
-                style={styles.termsRow}
-                onPress={() => setAgreedToTerms(!agreedToTerms)}
-                activeOpacity={0.7}
-              >
-                <View style={[
-                  styles.checkbox,
-                  { borderColor: agreedToTerms ? theme.primary : theme.border },
-                  agreedToTerms && { backgroundColor: theme.primary },
-                ]}>
-                  {agreedToTerms && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+              <TouchableOpacity style={styles.termsRow} onPress={() => setAgreedToTerms(!agreedToTerms)} activeOpacity={0.7}>
+                <View style={[styles.checkbox, { borderColor: agreedToTerms ? theme.primary : theme.border }, agreedToTerms && { backgroundColor: theme.primary }]}>
+                  {agreedToTerms && <Ionicons name="checkmark" size={14} color="#fff" />}
                 </View>
                 <Text style={[styles.termsText, { color: theme.mutedForeground }]}>
-                  I agree to the{' '}
-                  <Text style={{ color: theme.primary }}>Terms of Service</Text>
-                  {' '}and{' '}
-                  <Text style={{ color: theme.primary }}>Privacy Policy</Text>
+                  I agree to the <Text style={{ color: theme.primary }}>Terms of Service</Text> and <Text style={{ color: theme.primary }}>Privacy Policy</Text>
                 </Text>
               </TouchableOpacity>
 
-              {/* Create Account Button */}
+              {/* Create account */}
               <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: theme.primary }, isLoading && styles.buttonDisabled]}
+                style={[styles.primaryBtn, { backgroundColor: theme.primary }, isLoading && styles.disabled]}
                 onPress={handleRegister}
                 disabled={isLoading}
                 activeOpacity={0.85}
               >
-                {isLoading ? (
-                  <ActivityIndicator color={theme.primaryForeground} />
-                ) : (
-                  <View style={styles.buttonContent}>
-                    <Text style={[styles.primaryButtonText, { color: theme.primaryForeground }]}>
-                      Create Account
-                    </Text>
-                    <Ionicons name="arrow-forward" size={18} color={theme.primaryForeground} />
-                  </View>
-                )}
+                {isLoading
+                  ? <ActivityIndicator color="#fff" />
+                  : <View style={styles.btnRow}>
+                      <Text style={[styles.primaryBtnText, { color: theme.primaryForeground }]}>Create Account</Text>
+                      <Ionicons name="arrow-forward" size={18} color={theme.primaryForeground} />
+                    </View>
+                }
               </TouchableOpacity>
 
-              {/* Divider */}
               <View style={styles.divider}>
-                <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                <Text style={[styles.dividerText, { color: theme.mutedForeground, backgroundColor: theme.card }]}>
-                  Or sign up with
-                </Text>
-                <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                <View style={[styles.line, { backgroundColor: theme.border }]} />
+                <Text style={[styles.dividerText, { color: theme.mutedForeground, backgroundColor: theme.card }]}>Or sign up with</Text>
+                <View style={[styles.line, { backgroundColor: theme.border }]} />
               </View>
 
               {/* LinkedIn */}
-              <TouchableOpacity
-                style={[styles.socialButton, { borderColor: theme.border }]}
-                onPress={handlePreviewRegister}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
-                <Text style={[styles.socialButtonText, { color: theme.foreground }]}>Preview Account</Text>
+              <TouchableOpacity style={[styles.socialBtn, { borderColor: theme.border }]} onPress={handleLinkedIn} activeOpacity={0.7}>
+                <Ionicons name="logo-linkedin" size={20} color="#0A66C2" />
+                <Text style={[styles.socialBtnText, { color: theme.foreground }]}>Continue with LinkedIn</Text>
               </TouchableOpacity>
 
-              {/* Login Link */}
-              <View style={styles.bottomLink}>
-                <Text style={[styles.bottomLinkText, { color: theme.mutedForeground }]}>
-                  Already have an account?{' '}
-                </Text>
+              {/* Preview */}
+              <TouchableOpacity style={[styles.socialBtn, styles.previewBtn, { borderColor: theme.border }]} onPress={handlePreview} activeOpacity={0.7}>
+                <Ionicons name="person-circle-outline" size={20} color={theme.primary} />
+                <Text style={[styles.socialBtnText, { color: theme.foreground }]}>Preview Account</Text>
+              </TouchableOpacity>
+
+              <View style={styles.loginRow}>
+                <Text style={[styles.loginText, { color: theme.mutedForeground }]}>Already have an account? </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Login')} disabled={isLoading}>
-                  <Text style={[styles.bottomLinkAction, { color: theme.primary }]}>Sign in</Text>
+                  <Text style={[styles.loginLink, { color: theme.primary }]}>Sign in</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Benefits */}
             <View style={styles.benefits}>
-              {['Start swiping immediately', 'Free AI resume parsing', 'Match with perfect jobs'].map((benefit, idx) => (
-                <View key={idx} style={styles.benefitRow}>
+              {['Start swiping immediately', 'Free AI resume parsing', 'Match with perfect jobs'].map((b, i) => (
+                <View key={i} style={styles.benefitRow}>
                   <Ionicons name="checkmark-circle" size={18} color={theme.accent} />
-                  <Text style={[styles.benefitText, { color: theme.mutedForeground }]}>{benefit}</Text>
+                  <Text style={[styles.benefitText, { color: theme.mutedForeground }]}>{b}</Text>
                 </View>
               ))}
             </View>
@@ -317,79 +264,41 @@ const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing['3xl'],
-  },
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: Spacing.xl, paddingVertical: Spacing['3xl'] },
   logoRow: { alignItems: 'center', marginBottom: Spacing['2xl'] },
-  card: {
-    borderRadius: BorderRadius['2xl'],
-    borderWidth: 1,
-    padding: Spacing['3xl'],
-  },
-  headerSection: { alignItems: 'center', marginBottom: Spacing['2xl'] },
+  card: { borderRadius: BorderRadius['2xl'], borderWidth: 1, padding: Spacing['3xl'] },
+  heading: { alignItems: 'center', marginBottom: Spacing['2xl'] },
   title: { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
   subtitle: { fontSize: FontSize.md, textAlign: 'center' },
-  fieldGroup: { marginBottom: Spacing.lg },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.lg },
+  errorText: { flex: 1, fontSize: FontSize.sm },
+  field: { marginBottom: Spacing.lg },
   label: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, marginBottom: Spacing.sm },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    height: 48,
-  },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: BorderRadius.lg, height: 48 },
   inputIcon: { marginLeft: Spacing.md },
   input: { flex: 1, height: '100%', paddingHorizontal: Spacing.md, fontSize: FontSize.md },
-  eyeButton: { paddingHorizontal: Spacing.md, height: '100%', justifyContent: 'center' },
-  errorText: { fontSize: FontSize.xs, marginTop: Spacing.xs },
-  strengthContainer: { marginTop: Spacing.sm },
+  eye: { paddingHorizontal: Spacing.md, height: '100%', justifyContent: 'center' },
+  fieldError: { fontSize: FontSize.xs, marginTop: Spacing.xs },
+  strengthWrap: { marginTop: Spacing.sm },
   strengthBar: { height: 4, borderRadius: 2, marginBottom: Spacing.xs },
   strengthFill: { height: '100%', borderRadius: 2 },
   strengthText: { fontSize: FontSize.xs },
-  termsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.xl,
-    gap: Spacing.md,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: Spacing.xl, gap: Spacing.md },
+  checkbox: { width: 20, height: 20, borderRadius: BorderRadius.sm, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   termsText: { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
-  primaryButton: {
-    height: 52,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonDisabled: { opacity: 0.7 },
-  buttonContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  primaryButtonText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  primaryBtn: { height: 52, borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center' },
+  disabled: { opacity: 0.7 },
+  btnRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  primaryBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: Spacing['2xl'] },
-  dividerLine: { flex: 1, height: 1 },
+  line: { flex: 1, height: 1 },
   dividerText: { paddingHorizontal: Spacing.md, fontSize: FontSize.sm },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    gap: Spacing.sm,
-  },
-  socialButtonText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
-  bottomLink: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing['2xl'] },
-  bottomLinkText: { fontSize: FontSize.md },
-  bottomLinkAction: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  socialBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 52, borderRadius: BorderRadius.lg, borderWidth: 1, gap: Spacing.sm },
+  previewBtn: { marginTop: Spacing.md },
+  socialBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
+  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing['2xl'] },
+  loginText: { fontSize: FontSize.md },
+  loginLink: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
   benefits: { marginTop: Spacing['3xl'], gap: Spacing.md },
   benefitRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   benefitText: { fontSize: FontSize.sm },

@@ -4,12 +4,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './contexts/AuthContext';
 import { DemoProvider } from './contexts/DemoContext';
+import { NetworkProvider } from './contexts/NetworkContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import AppNavigator from './navigation/AppNavigator';
 
 const ThemedApp = () => {
   const { isDark } = useTheme();
-
   return (
     <NavigationContainer>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -24,7 +24,9 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <DemoProvider>
-            <ThemedApp />
+            <NetworkProvider>
+              <ThemedApp />
+            </NetworkProvider>
           </DemoProvider>
         </AuthProvider>
       </ThemeProvider>

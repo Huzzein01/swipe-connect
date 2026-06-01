@@ -32,6 +32,7 @@ type AuthContextType = {
   signInHistory: SignInRecord[];
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInPreview: (email?: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUserProfile: (displayName: string, photoURL?: string) => Promise<void>;
@@ -42,21 +43,20 @@ type AuthContextType = {
 const LOCAL_PREVIEW_USER_KEY = 'swipeconnect.previewUser';
 const LOCAL_AUTH_TOKEN_KEY = 'swipeconnect.authToken';
 const LOCAL_SIGN_IN_HISTORY_KEY = 'swipeconnect.signInHistory';
-const isPreviewAuthEnabled = Platform.OS === 'web' || process.env.EXPO_PUBLIC_ENABLE_DEMO_AUTH !== 'false';
+
+// Preview auth is only used when explicitly invoked — NOT as a fallback for failed logins.
+const previewAuthAvailable = process.env.EXPO_PUBLIC_ENABLE_DEMO_AUTH !== 'false';
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
-
 export const useAuth = () => useContext(AuthContext);
 
 const toApiRoot = () => jobService.apiBaseUrl.replace(/\/api$/, '');
 
 const getLinkedInCallbackToken = () => {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
-
   const url = new URL(window.location.href);
   const token = url.searchParams.get('token');
   if (!token) return null;
-
   url.searchParams.delete('token');
   window.history.replaceState({}, document.title, url.pathname === '/auth/callback' ? '/' : url.toString());
   return token;
@@ -69,29 +69,42 @@ const toAuthUser = (firebaseUser: FirebaseUser): AuthUser => ({
   photoURL: firebaseUser.photoURL,
 });
 
-const createPreviewUser = (email: string, displayName?: string): AuthUser => {
+const buildPreviewUser = (email: string, displayName?: string): AuthUser => {
   if (email.toLowerCase() === 'preview@swipeconnect.app') {
-    return {
-      uid: 'preview-user',
-      email,
-      displayName: displayName || 'Preview User',
-      photoURL: null,
-    };
+    return { uid: 'preview-user', email, displayName: displayName || 'Preview User', photoURL: null };
   }
-
-  const nameFromEmail = email.split('@')[0]?.replace(/[._-]/g, ' ') || 'Preview User';
-  const normalizedName = nameFromEmail
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-
+  const fromEmail = email.split('@')[0]?.replace(/[._-]/g, ' ') || 'Preview User';
+  const normalized = fromEmail.split(' ').filter(Boolean).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
   return {
     uid: `preview-${email.toLowerCase()}`,
     email,
-    displayName: displayName || normalizedName || 'Preview User',
+    displayName: displayName || normalized || 'Preview User',
     photoURL: null,
   };
+};
+
+/** Map Firebase error codes to user-friendly messages */
+const firebaseAuthError = (error: any): Error => {
+  const code: string = error?.code || '';
+  if (code === 'auth/user-not-found' || code === 'auth/invalid-email') {
+    return new Error('No account found with this email address.');
+  }
+  if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+    return new Error('Incorrect password. Please try again.');
+  }
+  if (code === 'auth/too-many-requests') {
+    return new Error('Too many attempts. Please wait a moment and try again.');
+  }
+  if (code === 'auth/email-already-in-use') {
+    return new Error('An account with this email already exists. Try signing in instead.');
+  }
+  if (code === 'auth/weak-password') {
+    return new Error('Password must be at least 6 characters.');
+  }
+  if (code === 'auth/network-request-failed') {
+    return new Error('Network error. Check your connection and try again.');
+  }
+  return new Error('Authentication failed. Please try again.');
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -100,57 +113,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authActionLoading, setAuthActionLoading] = useState(false);
   const [signInHistory, setSignInHistory] = useState<SignInRecord[]>([]);
 
-  const recordSignIn = async (
-    method: SignInRecord['method'],
-    email?: string | null
-  ) => {
+  const recordSignIn = async (method: SignInRecord['method'], email?: string | null) => {
     const stored = await AsyncStorage.getItem(LOCAL_SIGN_IN_HISTORY_KEY);
     const previous: SignInRecord[] = stored ? JSON.parse(stored) : signInHistory;
-    const nextRecord: SignInRecord = {
+    const next: SignInRecord = {
       id: `signin-${Date.now()}`,
       email: email || 'unknown@swipeconnect.app',
       method,
       platform: Platform.OS,
       at: new Date().toISOString(),
     };
-    const nextHistory = [nextRecord, ...previous].slice(0, 25);
-    await AsyncStorage.setItem(LOCAL_SIGN_IN_HISTORY_KEY, JSON.stringify(nextHistory));
-    setSignInHistory(nextHistory);
+    const history = [next, ...previous].slice(0, 25);
+    await AsyncStorage.setItem(LOCAL_SIGN_IN_HISTORY_KEY, JSON.stringify(history));
+    setSignInHistory(history);
   };
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    const loadSignInHistory = async () => {
-      const stored = await AsyncStorage.getItem(LOCAL_SIGN_IN_HISTORY_KEY);
-      if (stored && isMounted) {
-        setSignInHistory(JSON.parse(stored));
-      }
+    const loadHistory = async () => {
+      const raw = await AsyncStorage.getItem(LOCAL_SIGN_IN_HISTORY_KEY);
+      if (raw && mounted) setSignInHistory(JSON.parse(raw));
     };
 
-    const saveSignedInUser = async (nextUser: AuthUser) => {
+    const saveUser = async (nextUser: AuthUser) => {
       await AsyncStorage.setItem(LOCAL_PREVIEW_USER_KEY, JSON.stringify(nextUser));
-      if (nextUser.authToken) {
-        await AsyncStorage.setItem(LOCAL_AUTH_TOKEN_KEY, nextUser.authToken);
-      }
-      if (isMounted) {
-        setUser(nextUser);
-      }
+      if (nextUser.authToken) await AsyncStorage.setItem(LOCAL_AUTH_TOKEN_KEY, nextUser.authToken);
+      if (mounted) setUser(nextUser);
     };
 
     const loadLinkedInUser = async (token: string) => {
-      const response = await fetch(`${toApiRoot()}/auth/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Unable to load LinkedIn profile.');
-      }
-
-      const profile = await response.json();
-      await saveSignedInUser({
+      const res = await fetch(`${toApiRoot()}/auth/profile`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Unable to load LinkedIn profile.');
+      const profile = await res.json();
+      await saveUser({
         uid: profile._id || profile.id,
         email: profile.email,
         displayName: profile.displayName || profile.name,
@@ -160,124 +156,96 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await recordSignIn('linkedin', profile.email);
     };
 
-    const loadPreviewUser = async () => {
+    const boot = async () => {
       try {
-        await loadSignInHistory();
+        await loadHistory();
         const callbackToken = getLinkedInCallbackToken();
         if (callbackToken) {
           await loadLinkedInUser(callbackToken);
           return;
         }
-
-        const savedUser = await AsyncStorage.getItem(LOCAL_PREVIEW_USER_KEY);
-        if (savedUser && isMounted) {
-          setUser(JSON.parse(savedUser));
-        }
-      } catch (error) {
-        console.error('Error loading preview user:', error);
+        // Restore persisted preview/LinkedIn session
+        const saved = await AsyncStorage.getItem(LOCAL_PREVIEW_USER_KEY);
+        if (saved && mounted) setUser(JSON.parse(saved));
+      } catch (err) {
+        console.error('Auth boot error:', err);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
-    if (isPreviewAuthEnabled) {
-      loadPreviewUser();
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (!isMounted) return;
-      loadSignInHistory();
-
+    // Always listen to Firebase auth state; boot() handles preview/LinkedIn sessions
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!mounted) return;
       if (firebaseUser) {
         setUser(toAuthUser(firebaseUser));
         setLoading(false);
-        return;
+      } else {
+        boot();
       }
-
-      loadPreviewUser();
     });
 
     return () => {
-      isMounted = false;
-      unsubscribe();
+      mounted = false;
+      unsub();
     };
   }, []);
 
-  const savePreviewUser = async (previewUser: AuthUser) => {
-    await AsyncStorage.setItem(LOCAL_PREVIEW_USER_KEY, JSON.stringify(previewUser));
-    setUser(previewUser);
+  const clearPersistedSession = async () => {
+    await AsyncStorage.removeItem(LOCAL_PREVIEW_USER_KEY);
+    await AsyncStorage.removeItem(LOCAL_AUTH_TOKEN_KEY);
   };
 
-  const clearPreviewUser = async () => {
-    try {
-      await AsyncStorage.removeItem(LOCAL_PREVIEW_USER_KEY);
-      await AsyncStorage.removeItem(LOCAL_AUTH_TOKEN_KEY);
-    } catch (error) {
-      console.error('Error clearing preview user:', error);
-    }
-  };
-
-  const signInWithPreviewFallback = async (
-    email: string,
-    displayName?: string,
-    method: SignInRecord['method'] = 'preview'
-  ) => {
-    if (!isPreviewAuthEnabled) {
-      throw new Error('Preview authentication is disabled.');
-    }
-
-    await savePreviewUser(createPreviewUser(email, displayName));
-    await recordSignIn(method, email);
-  };
-
+  // ─── Sign up (Firebase only) ───────────────────────────────────────────────
   const signUp = async (email: string, password: string, displayName: string) => {
     setAuthActionLoading(true);
     try {
-      if (isPreviewAuthEnabled) {
-        await signInWithPreviewFallback(email, displayName, 'signup');
-        return;
-      }
-
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName });
-      setUser({ ...toAuthUser(userCredential.user), displayName });
-      await clearPreviewUser();
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName });
+      setUser({ ...toAuthUser(cred.user), displayName });
+      await clearPersistedSession();
       await recordSignIn('signup', email);
     } catch (error) {
-      await signInWithPreviewFallback(email, displayName, 'signup');
+      throw firebaseAuthError(error);
     } finally {
       setAuthActionLoading(false);
     }
   };
 
+  // ─── Sign in (Firebase only) ───────────────────────────────────────────────
   const signIn = async (email: string, password: string) => {
     setAuthActionLoading(true);
     try {
-      if (isPreviewAuthEnabled) {
-        await signInWithPreviewFallback(email, undefined, 'email');
-        return;
-      }
-
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      setUser(toAuthUser(userCredential.user));
-      await clearPreviewUser();
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      setUser(toAuthUser(cred.user));
+      await clearPersistedSession();
       await recordSignIn('email', email);
     } catch (error) {
-      await signInWithPreviewFallback(email, undefined, 'email');
+      throw firebaseAuthError(error);
     } finally {
       setAuthActionLoading(false);
     }
   };
 
+  // ─── Preview sign-in (explicit, not a fallback) ────────────────────────────
+  const signInPreview = async (email = 'preview@swipeconnect.app', displayName?: string) => {
+    if (!previewAuthAvailable) throw new Error('Preview login is not enabled.');
+    setAuthActionLoading(true);
+    try {
+      const previewUser = buildPreviewUser(email, displayName);
+      await AsyncStorage.setItem(LOCAL_PREVIEW_USER_KEY, JSON.stringify(previewUser));
+      setUser(previewUser);
+      await recordSignIn('preview', email);
+    } finally {
+      setAuthActionLoading(false);
+    }
+  };
+
+  // ─── Logout ────────────────────────────────────────────────────────────────
   const logout = async () => {
     setAuthActionLoading(true);
     try {
-      await clearPreviewUser();
+      await clearPersistedSession();
       await signOut(auth);
       setUser(null);
     } finally {
@@ -285,32 +253,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // ─── Reset password ────────────────────────────────────────────────────────
   const resetPassword = async (email: string) => {
     setAuthActionLoading(true);
     try {
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
-      if (!isPreviewAuthEnabled) {
-        throw error;
-      }
+      throw firebaseAuthError(error);
     } finally {
       setAuthActionLoading(false);
     }
   };
 
+  // ─── Update profile ────────────────────────────────────────────────────────
   const updateUserProfile = async (displayName: string, photoURL?: string) => {
     if (!user) throw new Error('No user logged in');
-
-    if (auth.currentUser) {
-      await updateProfile(auth.currentUser, { displayName, photoURL });
-    }
-
-    const updatedUser = { ...user, displayName, photoURL: photoURL ?? user.photoURL };
-    setUser(updatedUser);
-
-    if (isPreviewAuthEnabled) {
-      await AsyncStorage.setItem(LOCAL_PREVIEW_USER_KEY, JSON.stringify(updatedUser));
-    }
+    if (auth.currentUser) await updateProfile(auth.currentUser, { displayName, photoURL });
+    const updated = { ...user, displayName, photoURL: photoURL ?? user.photoURL };
+    setUser(updated);
+    // Keep persisted session up to date if it's a preview user
+    const saved = await AsyncStorage.getItem(LOCAL_PREVIEW_USER_KEY);
+    if (saved) await AsyncStorage.setItem(LOCAL_PREVIEW_USER_KEY, JSON.stringify(updated));
   };
 
   const isCurrentlyLoading = loading || authActionLoading;
@@ -324,6 +287,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signInHistory,
         signUp,
         signIn,
+        signInPreview,
         logout,
         resetPassword,
         updateUserProfile,
