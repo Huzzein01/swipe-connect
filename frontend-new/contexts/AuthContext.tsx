@@ -155,22 +155,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch(`${toApiRoot()}/auth/profile`, { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error('Unable to load LinkedIn profile.');
       const profile = await res.json();
+      // Coerce anything that might be an object into a safe string — a non-string
+      // value rendered as a React child throws and would crash the whole app.
+      const str = (v: any): string => {
+        if (v == null) return '';
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object') return String(v.name || v.value || v.localized || '');
+        return String(v);
+      };
       await saveUser({
-        uid: profile._id || profile.id,
-        email: profile.email,
-        displayName: profile.displayName || profile.name,
-        photoURL: profile.photoURL || profile.profilePicture || profile.picture || null,
+        uid: str(profile._id || profile.id) || `linkedin-${Date.now()}`,
+        email: str(profile.email),
+        displayName: str(profile.displayName || profile.name) || 'LinkedIn Member',
+        photoURL: str(profile.photoURL || profile.profilePicture || profile.picture) || null,
         authToken: token,
         provider: 'linkedin',
         linkedin: {
-          headline: profile.headline || profile.localizedHeadline || '',
-          bio: profile.summary || profile.bio || '',
-          location: profile.location?.name || profile.location || profile.locale || '',
-          linkedinUrl: profile.publicProfileUrl || profile.profileUrl || profile.linkedinUrl || '',
-          company: profile.company || profile.positions?.[0]?.companyName || '',
+          headline: str(profile.headline || profile.localizedHeadline),
+          bio: str(profile.summary || profile.bio),
+          location: str(profile.location || profile.locale),
+          linkedinUrl: str(profile.publicProfileUrl || profile.profileUrl || profile.linkedinUrl),
+          company: str(profile.company || profile.positions?.[0]?.companyName),
         },
       });
-      await recordSignIn('linkedin', profile.email);
+      await recordSignIn('linkedin', str(profile.email));
     };
 
     const boot = async () => {

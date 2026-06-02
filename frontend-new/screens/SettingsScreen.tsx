@@ -249,7 +249,7 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
               <View style={[styles.aiActiveTag, { backgroundColor: `${theme.primary}12`, borderColor: `${theme.primary}30` }]}>
                 <Ionicons name="checkmark-circle" size={14} color={theme.primary} />
                 <Text style={[{ fontSize: FontSize.xs, color: theme.primary, fontWeight: FontWeight.semibold }]}>
-                  AI Tailor is ON — requires ANTHROPIC_API_KEY in backend .env
+                  AI Tailor is ON — powered by Google Gemini
                 </Text>
               </View>
             )}

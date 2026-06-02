@@ -100,6 +100,24 @@ export const analyzeJobMatch = async (job: Job, resume: Resume | null): Promise<
   }
 };
 
+export type ParsedResumeAI = {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  title: string;
+  skills: string[];
+  experienceSummary: string;
+  experience: Array<{ title: string; company: string; startDate: string; endDate: string; description: string }>;
+  education: Array<{ degree: string; field: string; institution: string; graduationDate: string }>;
+};
+
+/** Send raw resume text to the backend for AI parsing (Gemini). Throws on failure. */
+export const parseResumeText = async (resumeText: string): Promise<ParsedResumeAI> => {
+  const response = await axios.post(`${API_BASE_URL}/ai/parse-resume`, { resumeText }, { timeout: 30000 });
+  return response.data as ParsedResumeAI;
+};
+
 export const tailorResumeForJob = async (job: Job, resume: Resume): Promise<TailoredResume> => {
   const resumeText = resumeToText(resume);
   const response = await axios.post(`${API_BASE_URL}/ai/tailor`, {

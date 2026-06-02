@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useUserProfile } from '../contexts/UserProfileContext';
 import * as DocumentPicker from 'expo-document-picker';
 import { Resume } from '../types/job';
+import { parseResumeText, ParsedResumeAI } from '../services/aiService';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 type ResumeUploadScreenProps = {
@@ -108,13 +109,69 @@ const extractName = (text: string, fileName: string, fallbackName?: string | nul
   return cleaned ? titleCase(cleaned) : 'Preview User';
 };
 
+// Map Gemini's parsed output into the app's Resume shape.
+const aiToResume = (
+  ai: ParsedResumeAI,
+  pickedFile: PickedResumeFile,
+  userId: string,
+  fallbackName?: string | null,
+  fallbackEmail?: string | null
+): Resume => {
+  const [city = '', state = ''] = (ai.location || '').split(',').map((s) => s.trim());
+  return {
+    id: `resume-${Date.now()}`,
+    userId,
+    fileUrl: pickedFile.name,
+    parsedData: {
+      name: ai.name || fallbackName || cleanFileName(pickedFile.name) || 'Your Name',
+      email: ai.email || fallbackEmail || '',
+      phone: ai.phone || undefined,
+      location: { city: city || 'Remote', state },
+      education: (ai.education && ai.education.length > 0)
+        ? ai.education.map((e) => ({
+            degree: e.degree || 'Degree',
+            field: e.field || '',
+            institution: e.institution || '',
+            graduationDate: e.graduationDate || '',
+          }))
+        : [],
+      experience: (ai.experience && ai.experience.length > 0)
+        ? ai.experience.map((x) => ({
+            title: x.title || ai.title || 'Professional',
+            company: x.company || '',
+            location: ai.location || '',
+            startDate: x.startDate || '',
+            endDate: x.endDate || undefined,
+            description: x.description || '',
+          }))
+        : [{ title: ai.title || 'Professional', company: '', location: ai.location || '', startDate: '', description: ai.experienceSummary || '' }],
+      skills: ai.skills && ai.skills.length > 0 ? ai.skills : [],
+      certifications: [],
+    },
+    lastUpdated: new Date().toISOString(),
+  };
+};
+
 const parseResumeFile = async (
   pickedFile: PickedResumeFile,
   userId: string,
   fallbackName?: string | null,
   fallbackEmail?: string | null
-): Promise<Resume> => {
+): Promise<{ resume: Resume; summary: string }> => {
   const rawText = await readPickedFileText(pickedFile);
+
+  // ── Try Gemini-powered parsing first (name, skills from skills+experience, summary)
+  if (rawText && rawText.trim().length > 60) {
+    try {
+      const ai = await parseResumeText(rawText);
+      if (ai && (ai.name || (ai.skills && ai.skills.length > 0))) {
+        return { resume: aiToResume(ai, pickedFile, userId, fallbackName, fallbackEmail), summary: ai.experienceSummary || '' };
+      }
+    } catch {
+      // fall through to local heuristic parsing
+    }
+  }
+
   const searchableText = `${rawText} ${pickedFile.name}`.toLowerCase();
   const email = rawText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || fallbackEmail || 'preview@swipeconnect.app';
   const phone = rawText.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)?.[0];
@@ -135,7 +192,7 @@ const parseResumeFile = async (
     rawText.match(/\b(?:at|@)\s+([A-Z][A-Za-z0-9&.\s]{2,30})/)?.[1]?.trim() ||
     'Recent Company';
 
-  return {
+  const resume: Resume = {
     id: `resume-${Date.now()}`,
     userId,
     fileUrl: pickedFile.name,
@@ -170,6 +227,7 @@ const parseResumeFile = async (
     },
     lastUpdated: new Date().toISOString(),
   };
+  return { resume, summary: '' };
 };
 
 const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
@@ -186,7 +244,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
 
   // Merge parsed resume fields into UserProfile — only fills empty fields,
   // always merges skills (union, no duplicates).
-  const syncResumeToProfile = async (parsed: Resume) => {
+  const syncResumeToProfile = async (parsed: Resume, summary?: string) => {
     const d = parsed.parsedData;
     const patch: Record<string, any> = {};
 
@@ -198,6 +256,8 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
     }
     if (!profile.title && d.experience?.[0]?.title) patch.title = d.experience[0].title;
     if (!profile.currentCompany && d.experience?.[0]?.company) patch.currentCompany = d.experience[0].company;
+    // Professional summary → bio (the AI experience summary)
+    if (!profile.bio && summary) patch.bio = summary;
 
     // Always merge skills — union of existing + newly extracted
     if (d.skills?.length) {
@@ -229,7 +289,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const pickedFile = result.assets[0];
         setIsLoading(true);
-        const parsedResume = await parseResumeFile(
+        const { resume: parsedResume, summary } = await parseResumeFile(
           pickedFile,
           user?.uid || 'preview-user',
           user?.displayName,
@@ -237,11 +297,11 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
         );
         setResume(parsedResume);
         await saveResume(parsedResume);
-        await syncResumeToProfile(parsedResume);
+        await syncResumeToProfile(parsedResume, summary);
         setIsLoading(false);
         Alert.alert(
           'Resume synced',
-          `${pickedFile.name} was parsed and your profile has been updated with extracted skills and experience.`
+          `${pickedFile.name} was parsed with AI. Your name, skills, and professional summary were added to your profile.`
         );
       }
     } catch (error) {

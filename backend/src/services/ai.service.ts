@@ -288,6 +288,63 @@ Tone: ${toneNote}
   return { letter: clean, wordCount: clean.split(/\s+/).length };
 };
 
+export type ParsedResumeAI = {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  title: string;
+  skills: string[];
+  experienceSummary: string;
+  experience: Array<{ title: string; company: string; startDate: string; endDate: string; description: string }>;
+  education: Array<{ degree: string; field: string; institution: string; graduationDate: string }>;
+};
+
+/** AI resume parsing — extracts name, skills (from skills + experience), and a summary */
+export const parseResumeWithAI = async (resumeText: string): Promise<ParsedResumeAI> => {
+  const prompt = `You are a resume parser. Extract structured data from the resume text below and return ONLY raw JSON (no markdown, no commentary).
+
+Rules:
+- name: the candidate's full name (from the top of the resume).
+- skills: a DEDUPLICATED union of (a) skills explicitly listed in any Skills section AND (b) skills, tools, technologies, languages, frameworks, and methodologies clearly implied by the Experience descriptions. Aim for 8–15 concrete skills. Title-case them.
+- experienceSummary: a sharp 2–3 sentence professional summary of the candidate's overall experience and strengths, written in third person.
+- title: the candidate's most recent/current job title.
+- Use "" for any string you cannot find. Never invent employers, schools, or dates.
+
+RESUME TEXT:
+${resumeText.slice(0, 4500)}
+
+Return exactly this JSON shape:
+{
+  "name": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+  "title": "",
+  "skills": [],
+  "experienceSummary": "",
+  "experience": [{ "title": "", "company": "", "startDate": "", "endDate": "", "description": "" }],
+  "education": [{ "degree": "", "field": "", "institution": "", "graduationDate": "" }]
+}`;
+
+  const raw = await callLLM(prompt, 1500);
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('AI did not return valid JSON for resume');
+  const parsed = JSON.parse(jsonMatch[0]) as ParsedResumeAI;
+  // Defensive normalization so the frontend never receives non-arrays/objects
+  return {
+    name: String(parsed.name || ''),
+    email: String(parsed.email || ''),
+    phone: String(parsed.phone || ''),
+    location: String(parsed.location || ''),
+    title: String(parsed.title || ''),
+    skills: Array.isArray(parsed.skills) ? parsed.skills.map(String).filter(Boolean) : [],
+    experienceSummary: String(parsed.experienceSummary || ''),
+    experience: Array.isArray(parsed.experience) ? parsed.experience : [],
+    education: Array.isArray(parsed.education) ? parsed.education : [],
+  };
+};
+
 // ─── Fallback scoring (no API key, or Claude unavailable) ─────────────────────
 const fallbackMatchScore = (resumeText: string, requirements: string[]): MatchAnalysis => {
   // No resume → neutral score in the 65–78 range. We cannot grade against nothing;

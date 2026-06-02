@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { analyzeMatch, tailorResume, generateCoverLetter } from '../services/ai.service';
+import { analyzeMatch, tailorResume, generateCoverLetter, parseResumeWithAI } from '../services/ai.service';
 
 export const analyzeMatchController = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -60,6 +60,20 @@ export const coverLetterController = async (req: Request, res: Response, next: N
       wordCount: 30,
       fallback: true,
     });
+  }
+};
+
+export const parseResumeController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { resumeText } = req.body;
+    if (!resumeText || String(resumeText).trim().length < 30) {
+      return res.status(400).json({ message: 'resumeText (min 30 chars) is required' });
+    }
+    const result = await parseResumeWithAI(String(resumeText));
+    res.json(result);
+  } catch (error: any) {
+    console.error('AI resume parse error:', error?.message);
+    res.status(502).json({ message: 'AI resume parsing unavailable', error: error?.message });
   }
 };
 
