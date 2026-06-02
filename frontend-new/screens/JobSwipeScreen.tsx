@@ -15,12 +15,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
   Extrapolation,
   interpolate,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -101,24 +103,35 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   const activeRemaining = mode === 'jobs' ? remainingJobs.length : remainingProfiles.length;
 
   // ─── Reset animation whenever the active card changes ────────────────────
-  // This is the fix for the "faded card" bug: after a swipe, translateX stays
-  // at SCREEN_WIDTH * 1.6. The next card inherits that value and the APPLY
-  // label (with white background) floats over it, making text look faded.
+  // Cancel any in-flight spring before reassigning — prevents Reanimated from
+  // crashing on web when a spring is still running while we reset to 0.
   useEffect(() => {
-    translateX.value = 0;
-    translateY.value = 0;
-    isDragging.value = 0;
+    cancelAnimation(translateX);
+    cancelAnimation(translateY);
+    cancelAnimation(isDragging);
+    translateX.value = withTiming(0, { duration: 0 });
+    translateY.value = withTiming(0, { duration: 0 });
+    isDragging.value = withTiming(0, { duration: 0 });
   }, [currentJob?.id, currentProfile?.id]);
 
   // ─── AI: analyze the current card whenever it changes ────────────────────
   useEffect(() => {
-    if (!currentJob || aiScores[currentJob.id] || analyzingId === currentJob.id) return;
-    setAnalyzingId(currentJob.id);
-    analyzeJobMatch(currentJob, resume).then((result) => {
-      setAiScores((prev) => ({ ...prev, [currentJob.id]: result }));
-      setAnalyzingId(null);
-    });
-  }, [currentJob?.id]);
+    if (!currentJob) return;
+    const jobId = currentJob.id;
+    if (aiScores[jobId]) return; // already cached
+    let active = true;
+    setAnalyzingId(jobId);
+    analyzeJobMatch(currentJob, resume)
+      .then((result) => {
+        if (!active) return;
+        setAiScores((prev) => ({ ...prev, [jobId]: result }));
+      })
+      .catch(() => { /* ignore — score stays at fallback */ })
+      .finally(() => {
+        if (active) setAnalyzingId(null);
+      });
+    return () => { active = false; };
+  }, [currentJob?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Swipe logic ──────────────────────────────────────────────────────────
   const resetCard = useCallback(() => {
@@ -226,47 +239,62 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   const handleModeChange = (next: DeckMode) => {
     setMode(next);
     setStatusMessage(null);
-    translateX.value = 0;
-    translateY.value = 0;
-    isDragging.value = 0;
+    cancelAnimation(translateX);
+    cancelAnimation(translateY);
+    cancelAnimation(isDragging);
+    translateX.value = withTiming(0, { duration: 0 });
+    translateY.value = withTiming(0, { duration: 0 });
+    isDragging.value = withTiming(0, { duration: 0 });
   };
 
-  // ─── Gesture (GestureDetector API — works on web + native) ───────────────
-  const panGesture = Gesture.Pan()
-    .onBegin(() => {
-      isDragging.value = withSpring(1, { damping: 20, stiffness: 300 });
-    })
-    .onUpdate((event) => {
-      translateX.value = event.translationX;
-      translateY.value = event.translationY * 0.45;
-    })
-    .onEnd((event) => {
-      const shouldSwipe =
-        Math.abs(event.translationX) > SWIPE_THRESHOLD ||
-        Math.abs(event.velocityX) > 700;
+  // ─── Gesture ─────────────────────────────────────────────────────────────
+  // Memoized so the gesture object is stable across renders — recreating it
+  // on every render causes instability on web (crash every ~2 min).
+  // activeOffsetX / failOffsetY: only capture horizontal drags so vertical
+  // scrolling on mobile/desktop is never blocked.
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-8, 8])
+        .failOffsetY([-20, 20])
+        .onBegin(() => {
+          isDragging.value = withSpring(1, { damping: 20, stiffness: 300 });
+        })
+        .onUpdate((event) => {
+          translateX.value = event.translationX;
+          translateY.value = event.translationY * 0.4;
+        })
+        .onEnd((event) => {
+          const shouldSwipe =
+            Math.abs(event.translationX) > SWIPE_THRESHOLD ||
+            Math.abs(event.velocityX) > 700;
 
-      if (shouldSwipe) {
-        const dir = event.translationX > 0 || event.velocityX > 0 ? 1 : -1;
-        translateX.value = withSpring(dir * SCREEN_WIDTH * 1.6, {
-          velocity: event.velocityX,
-          damping: 18,
-          stiffness: 110,
-        });
-        translateY.value = withSpring(translateY.value + event.velocityY * 0.12, {
-          damping: 20,
-          stiffness: 110,
-        });
-        isDragging.value = withSpring(0);
-        runOnJS(handleSwipe)(dir > 0 ? 'right' : 'left');
-      } else {
-        translateX.value = withSpring(0, { damping: 22, stiffness: 220 });
-        translateY.value = withSpring(0, { damping: 22, stiffness: 220 });
-        isDragging.value = withSpring(0);
-      }
-    })
-    .onFinalize(() => {
-      isDragging.value = withSpring(0);
-    });
+          if (shouldSwipe) {
+            const dir = event.translationX > 0 || event.velocityX > 0 ? 1 : -1;
+            translateX.value = withSpring(dir * SCREEN_WIDTH * 1.6, {
+              velocity: event.velocityX,
+              damping: 18,
+              stiffness: 110,
+            });
+            translateY.value = withSpring(translateY.value + event.velocityY * 0.1, {
+              damping: 20,
+              stiffness: 110,
+            });
+            isDragging.value = withTiming(0, { duration: 200 });
+            runOnJS(handleSwipe)(dir > 0 ? 'right' : 'left');
+          } else {
+            translateX.value = withSpring(0, { damping: 22, stiffness: 220 });
+            translateY.value = withSpring(0, { damping: 22, stiffness: 220 });
+            isDragging.value = withTiming(0, { duration: 150 });
+          }
+        })
+        .onFinalize(() => {
+          // Safety reset — catches cancelled gestures (e.g. phone call interruption)
+          isDragging.value = withTiming(0, { duration: 150 });
+        }),
+    // Re-create only when handleSwipe changes (i.e. mode or currentJob changes)
+    [handleSwipe]
+  );
 
   // ─── Animated styles ──────────────────────────────────────────────────────
   const cardStyle = useAnimatedStyle(() => {
@@ -597,6 +625,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
           <Pressable
             style={[styles.actionBtn, { borderColor: theme.destructive, backgroundColor: theme.card }]}
             onPress={() => {
+              cancelAnimation(translateX);
               translateX.value = withSpring(-SCREEN_WIDTH * 1.5, { damping: 18, stiffness: 110 });
               handleSwipe('left');
             }}
@@ -612,6 +641,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
           <Pressable
             style={[styles.actionBtn, { borderColor: mode === 'networking' ? theme.accent : theme.success, backgroundColor: mode === 'networking' ? `${theme.accent}14` : `${theme.success}12` }]}
             onPress={() => {
+              cancelAnimation(translateX);
               translateX.value = withSpring(SCREEN_WIDTH * 1.5, { damping: 18, stiffness: 110 });
               handleSwipe('right');
             }}

@@ -15,8 +15,28 @@ const MAX_PER_COMPANY = 10;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const stripHtml = (s = '') =>
-  s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+const ENTITY_MAP: Record<string, string> = {
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'",
+  '&apos;': "'", '&nbsp;': ' ', '&mdash;': '—', '&ndash;': '–',
+  '&rsquo;': "'", '&lsquo;': "'", '&rdquo;': '"', '&ldquo;': '"',
+  '&hellip;': '…', '&bull;': '•', '&copy;': '©', '&reg;': '®',
+  '&trade;': '™', '&middot;': '·',
+};
+
+const stripHtml = (s = ''): string => {
+  if (!s || typeof s !== 'string') return '';
+  return s
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/?(p|li|div|h[1-6]|tr|td)[^>]*>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&[a-z]+;/gi, (e) => ENTITY_MAP[e.toLowerCase()] ?? ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\s+/g, ' ')
+    .trim();
+};
 
 const inferType = (s = ''): NormalizedJob['type'] => {
   const l = s.toLowerCase();

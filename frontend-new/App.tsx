@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthProvider } from './contexts/AuthContext';
 import { DemoProvider } from './contexts/DemoContext';
 import { NetworkProvider } from './contexts/NetworkContext';
@@ -23,6 +24,7 @@ const ThemedApp = () => {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <AuthProvider>
@@ -40,5 +42,6 @@ export default function App() {
         </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

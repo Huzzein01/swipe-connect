@@ -42,13 +42,41 @@ const experienceLabels: Record<UserPreferences['experienceLevel'], string[]> = {
   executive: ['Director of', 'Head of', 'VP of'],
 };
 
+const ENTITY_MAP: Record<string, string> = {
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'",
+  '&apos;': "'", '&nbsp;': ' ', '&mdash;': '—', '&ndash;': '–',
+  '&rsquo;': "'", '&lsquo;': "'", '&rdquo;': '"', '&ldquo;': '"',
+  '&hellip;': '…', '&bull;': '•', '&copy;': '©', '&reg;': '®',
+  '&trade;': '™', '&middot;': '·',
+};
+
+const decodeEntities = (s: string): string =>
+  s
+    .replace(/&[a-z]+;/gi, (e) => ENTITY_MAP[e.toLowerCase()] ?? ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+
 const sentence = (value: string) => value.replace(/\s+/g, ' ').trim();
 
+const cleanText = (raw: string): string =>
+  sentence(
+    decodeEntities(
+      raw
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<br\s*\/?>/gi, ' ')
+        .replace(/<\/?(p|li|div|h[1-6])[^>]*>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+    )
+  );
+
 export const summarizeDescription = (description: string, maxLength = 220) => {
-  const clean = sentence(description.replace(/<[^>]+>/g, ' '));
+  const clean = cleanText(description || '');
+  if (!clean) return '';
   if (clean.length <= maxLength) return clean;
   const slice = clean.slice(0, maxLength);
-  return `${slice.slice(0, Math.max(slice.lastIndexOf('.'), slice.lastIndexOf(' '))).trim()}...`;
+  const cutAt = Math.max(slice.lastIndexOf('.'), slice.lastIndexOf(' '));
+  return `${slice.slice(0, cutAt > 0 ? cutAt : maxLength).trim()}…`;
 };
 
 export const detailSectionsForJob = (job: Job) => {
