@@ -45,7 +45,7 @@ const PrivacyPolicyScreen = ({ navigation }: Props) => {
         <Text style={[styles.headerTitle, { color: theme.foreground }]}>Privacy Policy</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
         <Text style={[styles.updated, { color: theme.mutedForeground }]}>Last updated: {LAST_UPDATED}</Text>
 
         <Section title="1. Introduction">

@@ -73,7 +73,7 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
       >
         {/* Location */}

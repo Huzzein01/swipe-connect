@@ -60,7 +60,7 @@ const ConnectionProfileScreen = ({ navigation, route }: Props) => {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
         {/* Hero */}
         <View style={[styles.hero, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={[styles.avatar, { backgroundColor: `${theme.accent}20`, borderColor: `${theme.accent}40` }]}>

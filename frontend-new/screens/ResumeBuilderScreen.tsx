@@ -325,7 +325,7 @@ ${data.certifications ? 'CERTIFICATIONS\n' + data.certifications : ''}
 
       {/* Step: Template */}
       {step === 'template' && (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>ATS-Approved Templates</Text>
           <Text style={[styles.sectionSub, { color: theme.mutedForeground }]}>All templates are optimised for applicant tracking systems used by modern companies.</Text>
 
@@ -357,7 +357,7 @@ ${data.certifications ? 'CERTIFICATIONS\n' + data.certifications : ''}
 
       {/* Step: Build */}
       {step === 'build' && (
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={true}>
           <Field label="Full name *" value={data.name} onChange={set('name')} placeholder="Jane Smith" />
           <Field label="Email *" value={data.email} onChange={set('email')} placeholder="jane@example.com" />
           <Field label="Phone" value={data.phone} onChange={set('phone')} placeholder="+1 (312) 555-0000" />
@@ -386,7 +386,7 @@ ${data.certifications ? 'CERTIFICATIONS\n' + data.certifications : ''}
 
       {/* Step: Preview */}
       {step === 'preview' && (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
           <View style={[styles.previewBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={[styles.previewBanner, { backgroundColor: selected.accentColor }]}>
               <Ionicons name="document-text" size={18} color="#fff" />

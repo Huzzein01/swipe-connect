@@ -92,7 +92,7 @@ const HelpScreen = ({ navigation }: HelpScreenProps) => {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
       >
         {/* Header */}
         <View style={styles.header}>

@@ -141,7 +141,7 @@ ${profile.linkedinUrl || ''}`.trim();
       </View>
 
       {step === 'form' ? (
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={true}>
           <View style={[styles.infoBanner, { backgroundColor: `${theme.primary}10`, borderColor: `${theme.primary}25` }]}>
             <Ionicons name="sparkles-outline" size={18} color={theme.primary} />
             <Text style={[styles.infoText, { color: theme.foreground }]}>
@@ -197,7 +197,7 @@ ${profile.linkedinUrl || ''}`.trim();
           </TouchableOpacity>
         </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
           {/* Result info */}
           <View style={[styles.resultMeta, { backgroundColor: `${theme.primary}10`, borderColor: `${theme.primary}25` }]}>
             <Ionicons name="checkmark-circle" size={18} color={theme.primary} />

@@ -128,7 +128,7 @@ const NetworkScreen = ({ navigation }: Props) => {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
           ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
         />
       )}

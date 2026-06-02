@@ -153,7 +153,7 @@ const ChatScreen = ({ navigation, route }: Props) => {
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
           contentContainerStyle={[styles.messageList, thread.length === 0 && styles.messageListEmpty]}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
           ListEmptyComponent={
             <View style={styles.emptyChat}>
               <View style={[styles.emptyIcon, { backgroundColor: `${theme.accent}15` }]}>

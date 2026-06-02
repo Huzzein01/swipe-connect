@@ -31,7 +31,7 @@ const HomeScreen = ({ navigation }: Props) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
 
         {/* ── Top bar ──────────────────────────────────────────────────── */}
         <View style={styles.topBar}>

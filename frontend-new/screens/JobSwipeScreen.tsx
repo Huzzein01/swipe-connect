@@ -494,7 +494,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
       <ScrollView
         style={styles.screenScroll}
         contentContainerStyle={styles.screenScrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
       >
       {/* Mode toggle + filter button (captions removed) */}
@@ -663,7 +663,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
               </TouchableOpacity>
             </View>
             {detailSections && (
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
+              <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
                 {[
                   { title: 'Overview', content: detailSections.overview },
                 ].map(({ title, content }) => (
@@ -722,7 +722,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
                 <Ionicons name="close" size={18} color={theme.foreground} />
               </TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
+            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
               {tailorModal?.result.changes.slice(0, 5).map((c, i) => (
                 <View key={i} style={[styles.changeCard, { borderColor: theme.border }]}>
                   <Text style={[styles.changeSection, { color: theme.primary }]}>{c.section}</Text>
@@ -783,7 +783,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
                     <Ionicons name="close" size={20} color={theme.foreground} />
                   </TouchableOpacity>
                 </View>
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
+                <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
                   <Text style={[styles.detailSection, { color: theme.accent }]}>About</Text>
                   <Text style={[styles.detailBody, { color: theme.foreground }]}>{detailProfile.bio}</Text>
                   <Text style={[styles.detailSection, { color: theme.accent }]}>Looking For</Text>

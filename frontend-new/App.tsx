@@ -1,8 +1,10 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import ManualScrollControls from './components/ManualScrollControls';
 import { AuthProvider } from './contexts/AuthContext';
 import { DemoProvider } from './contexts/DemoContext';
 import { NetworkProvider } from './contexts/NetworkContext';
@@ -45,10 +47,13 @@ const linking = {
 const ThemedApp = () => {
   const { isDark } = useTheme();
   return (
-    <NavigationContainer linking={linking}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <AppNavigator />
-    </NavigationContainer>
+    <View style={{ flex: 1 }}>
+      <NavigationContainer linking={linking}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <AppNavigator />
+      </NavigationContainer>
+      <ManualScrollControls />
+    </View>
   );
 };
 
