@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -27,6 +27,8 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
   const [notifications, setNotifications] = useState(true);
   const [locationServices, setLocationServices] = useState(true);
   const [biometricAuth, setBiometricAuth] = useState(false);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
     const loadBiometricPreference = async () => {
@@ -80,6 +82,14 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
     await AsyncStorage.setItem('swipeconnect.biometricAuth', 'true');
   };
 
+  const handleAiTailorToggle = async (enabled: boolean) => {
+    try {
+      await setAiTailorEnabled(enabled);
+    } catch {
+      Alert.alert('AI Tailor unavailable', 'Unable to save this setting right now. Please try again.');
+    }
+  };
+
   const handleDeleteAccount = () => {
     Alert.alert(
       'Reset Demo Account',
@@ -98,6 +108,12 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
     );
   };
 
+  const scrollSettings = (direction: 1 | -1) => {
+    const nextY = Math.max(0, scrollY + direction * 460);
+    scrollRef.current?.scrollTo({ y: nextY, animated: true });
+    setScrollY(nextY);
+  };
+
   const themeOptions: Array<{ label: string; value: 'light' | 'dark' | 'system'; icon: any }> = [
     { label: 'Light', value: 'light', icon: 'sunny-outline' },
     { label: 'Dark', value: 'dark', icon: 'moon-outline' },
@@ -107,10 +123,15 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
-        style={styles.scrollView}
+        ref={scrollRef}
+        style={[styles.scrollView, Platform.OS === 'web' && styles.webScrollView]}
         showsVerticalScrollIndicator={true}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
+        scrollEnabled
+        nestedScrollEnabled
+        scrollEventThrottle={16}
+        onScroll={(event) => setScrollY(event.nativeEvent.contentOffset.y)}
       >
         {/* Display Section */}
         <View style={styles.section}>
@@ -240,7 +261,7 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
               </View>
               <Switch
                 value={aiTailorEnabled}
-                onValueChange={setAiTailorEnabled}
+                onValueChange={handleAiTailorToggle}
                 trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
                 thumbColor={aiTailorEnabled ? theme.primary : '#f4f3f4'}
               />
@@ -345,6 +366,27 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
           SwipeConnect v1.0.0
         </Text>
       </ScrollView>
+
+      <View pointerEvents="box-none" style={styles.settingsScrollControls}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Settings scroll up"
+          style={[styles.settingsScrollButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => scrollSettings(-1)}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="chevron-up" size={22} color={theme.foreground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Settings scroll down"
+          style={[styles.settingsScrollButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => scrollSettings(1)}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="chevron-down" size={22} color={theme.foreground} />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -352,6 +394,7 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
+  webScrollView: { overflowY: 'auto' as any, overflowX: 'hidden' as any },
   scrollContent: { flexGrow: 1, paddingBottom: 140 },
   section: {
     paddingHorizontal: Spacing.xl,
@@ -454,6 +497,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: FontSize.sm,
     marginBottom: Spacing['4xl'],
+  },
+  settingsScrollControls: {
+    position: 'absolute',
+    right: Spacing.md,
+    bottom: 96,
+    gap: Spacing.sm,
+  },
+  settingsScrollButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
 });
 

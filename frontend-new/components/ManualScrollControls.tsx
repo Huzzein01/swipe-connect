@@ -10,6 +10,7 @@ const ManualScrollControls = () => {
   const { theme } = useTheme();
   const [progress, setProgress] = useState(0);
   const [canScroll, setCanScroll] = useState(false);
+  const [pathname, setPathname] = useState('');
 
   const scrollbarCss = useMemo(() => `
     html, body, #root {
@@ -79,6 +80,10 @@ const ManualScrollControls = () => {
   };
 
   const refreshProgress = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      setPathname((current) => current === window.location.pathname ? current : window.location.pathname);
+    }
+
     const target = getPrimaryScrollElement();
     if (!target) {
       setCanScroll(false);
@@ -108,14 +113,17 @@ const ManualScrollControls = () => {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
 
+    const syncPathname = () => setPathname(window.location.pathname);
     const style = document.createElement('style');
     style.setAttribute('data-swipeconnect-scrollbars', 'true');
     style.textContent = scrollbarCss;
     document.head.appendChild(style);
 
-    const interval = window.setInterval(refreshProgress, 500);
+    const interval = window.setInterval(refreshProgress, 1500);
     window.addEventListener('scroll', refreshProgress, true);
     window.addEventListener('resize', refreshProgress);
+    window.addEventListener('popstate', syncPathname);
+    syncPathname();
     refreshProgress();
 
     return () => {
@@ -123,10 +131,11 @@ const ManualScrollControls = () => {
       window.clearInterval(interval);
       window.removeEventListener('scroll', refreshProgress, true);
       window.removeEventListener('resize', refreshProgress);
+      window.removeEventListener('popstate', syncPathname);
     };
   }, [scrollbarCss]);
 
-  if (Platform.OS !== 'web' || !canScroll) return null;
+  if (Platform.OS !== 'web' || !canScroll || pathname.includes('settings')) return null;
 
   return (
     <View style={[styles.wrap, { backgroundColor: theme.card, borderColor: theme.border }]}>
