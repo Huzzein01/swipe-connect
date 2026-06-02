@@ -82,6 +82,11 @@ const ManualScrollControls = () => {
   const refreshProgress = () => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       setPathname((current) => current === window.location.pathname ? current : window.location.pathname);
+      if (window.location.pathname.includes('settings')) {
+        setCanScroll(false);
+        setProgress(0);
+        return;
+      }
     }
 
     const target = getPrimaryScrollElement();

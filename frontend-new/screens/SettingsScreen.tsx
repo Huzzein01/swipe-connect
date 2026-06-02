@@ -28,7 +28,7 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
   const [locationServices, setLocationServices] = useState(true);
   const [biometricAuth, setBiometricAuth] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
-  const [scrollY, setScrollY] = useState(0);
+  const scrollYRef = useRef(0);
 
   useEffect(() => {
     const loadBiometricPreference = async () => {
@@ -109,9 +109,9 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
   };
 
   const scrollSettings = (direction: 1 | -1) => {
-    const nextY = Math.max(0, scrollY + direction * 460);
+    const nextY = Math.max(0, scrollYRef.current + direction * 460);
     scrollRef.current?.scrollTo({ y: nextY, animated: true });
-    setScrollY(nextY);
+    scrollYRef.current = nextY;
   };
 
   const themeOptions: Array<{ label: string; value: 'light' | 'dark' | 'system'; icon: any }> = [
@@ -131,7 +131,9 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
         scrollEnabled
         nestedScrollEnabled
         scrollEventThrottle={16}
-        onScroll={(event) => setScrollY(event.nativeEvent.contentOffset.y)}
+        onScroll={(event) => {
+          scrollYRef.current = event.nativeEvent.contentOffset.y;
+        }}
       >
         {/* Display Section */}
         <View style={styles.section}>
