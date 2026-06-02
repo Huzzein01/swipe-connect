@@ -9,25 +9,54 @@ import axios from 'axios';
  * Throws only if every configured provider fails (or none configured).
  */
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Gemini free tier intermittently returns 503 / "high demand". Retry a few times.
+const isTransient = (err: any): boolean => {
+  const status = err?.response?.status;
+  const msg = String(err?.response?.data?.error?.message || err?.message || '').toLowerCase();
+  return status === 503 || status === 429 || msg.includes('high demand') || msg.includes('overloaded');
+};
 
 const callGemini = async (prompt: string, maxTokens: number): Promise<string> => {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('no-gemini');
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
-  const res = await axios.post(
-    url,
-    {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      // Headroom above maxTokens because thinking models can spend tokens
+      // before emitting text; thinkingBudget:0 disables thinking on 2.5.
+      maxOutputTokens: maxTokens + 512,
+      temperature: 0.7,
+      thinkingConfig: { thinkingBudget: 0 },
     },
-    { headers: { 'content-type': 'application/json' }, timeout: 25000 }
-  );
-  const text = res.data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') || '';
-  if (!text) throw new Error('gemini-empty');
-  return text;
+  };
+
+  let lastErr: any;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await axios.post(url, body, {
+        headers: { 'content-type': 'application/json' },
+        timeout: 30000,
+      });
+      const text = res.data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') || '';
+      if (!text) throw new Error('gemini-empty');
+      return text;
+    } catch (err: any) {
+      lastErr = err;
+      if (isTransient(err) && attempt < 2) {
+        await sleep(700 * (attempt + 1)); // 0.7s, 1.4s backoff
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
 };
 
 const callDeepSeek = async (prompt: string, maxTokens: number): Promise<string> => {
