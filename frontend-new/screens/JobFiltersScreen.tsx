@@ -58,9 +58,24 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
     });
   };
 
+  const setRadius = (radius: number) => {
+    setPreferences({
+      ...preferences,
+      location: {
+        ...preferences.location,
+        radius: Math.max(1, Math.min(500, radius)),
+      },
+    });
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Location */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Location</Text>
@@ -98,20 +113,32 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
             </View>
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: theme.mutedForeground }]}>Radius (miles)</Text>
-              <View style={[styles.inputWrapper, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
+              <View style={[styles.radiusControl, { borderColor: theme.border, backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
+                <TouchableOpacity
+                  style={[styles.radiusButton, { backgroundColor: theme.muted }]}
+                  onPress={() => setRadius(preferences.location.radius - 1)}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="remove" size={18} color={theme.foreground} />
+                </TouchableOpacity>
                 <TextInput
-                  style={[styles.input, { color: theme.foreground, paddingLeft: Spacing.md }]}
+                  style={[styles.radiusInput, { color: theme.foreground }]}
                   placeholder="50"
                   placeholderTextColor={theme.mutedForeground}
                   value={preferences.location.radius.toString()}
                   keyboardType="numeric"
                   onChangeText={(text) =>
-                    setPreferences({
-                      ...preferences,
-                      location: { ...preferences.location, radius: parseInt(text) || 50 },
-                    })
+                    setRadius(parseInt(text, 10) || 1)
                   }
                 />
+                <Text style={[styles.radiusSuffix, { color: theme.mutedForeground }]}>mi</Text>
+                <TouchableOpacity
+                  style={[styles.radiusButton, { backgroundColor: theme.muted }]}
+                  onPress={() => setRadius(preferences.location.radius + 1)}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="add" size={18} color={theme.foreground} />
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -243,6 +270,7 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingTop: Spacing.sm, paddingBottom: 140 },
   section: {
     paddingHorizontal: Spacing.xl,
     marginBottom: Spacing.xl,
@@ -258,8 +286,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: Spacing.lg,
   },
-  locationRow: { flexDirection: 'row', gap: Spacing.md },
-  fieldGroup: { marginBottom: Spacing.md },
+  locationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  fieldGroup: { minWidth: 120, marginBottom: Spacing.md },
   label: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, marginBottom: Spacing.sm },
   inputWrapper: {
     flexDirection: 'row',
@@ -270,6 +298,31 @@ const styles = StyleSheet.create({
   },
   inputIcon: { marginLeft: Spacing.md },
   input: { flex: 1, height: '100%', paddingHorizontal: Spacing.md, fontSize: FontSize.md },
+  radiusControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: BorderRadius.lg,
+    minHeight: 48,
+    paddingHorizontal: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  radiusButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radiusInput: {
+    flex: 1,
+    height: 44,
+    minWidth: 72,
+    textAlign: 'center',
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+  },
+  radiusSuffix: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

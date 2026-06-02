@@ -54,7 +54,7 @@ const DEFAULT_PROFILE: UserProfile = {
   location: '',
   bio: '',
   currentCompany: '',
-  experienceYears: '3-5 years',
+  experienceYears: '',
   linkedinUrl: '',
   githubUrl: '',
   portfolioUrl: '',
@@ -156,8 +156,8 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // ── Sync LinkedIn sign-in data into the profile (fills empty fields only) ──
   useEffect(() => {
     try {
-      if (!hydrated || !user || user.provider !== 'linkedin') return;
-      if (syncedFor.current === user.uid) return; // sync once per LinkedIn user
+      if (!hydrated || !user) return;
+      if (syncedFor.current === user.uid) return; // sync once per user
       syncedFor.current = user.uid;
 
       const p = profileRef.current;
@@ -168,15 +168,17 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (!p.displayName && user.displayName) patch.displayName = s(user.displayName);
       if (!p.email && user.email) patch.email = s(user.email);
       if (!p.photoUri && user.photoURL) patch.photoUri = s(user.photoURL); // adopt LinkedIn avatar
-      if (!p.title && li.headline) patch.title = s(li.headline);
-      if (!p.bio && li.bio) patch.bio = s(li.bio);
-      if (!p.location && li.location) patch.location = s(li.location);
-      if (!p.currentCompany && li.company) patch.currentCompany = s(li.company);
-      if (!p.linkedinUrl && li.linkedinUrl) patch.linkedinUrl = s(li.linkedinUrl);
+      if (user.provider === 'linkedin') {
+        if (!p.title && li.headline) patch.title = s(li.headline);
+        if (!p.bio && li.bio) patch.bio = s(li.bio);
+        if (!p.location && li.location) patch.location = s(li.location);
+        if (!p.currentCompany && li.company) patch.currentCompany = s(li.company);
+        if (!p.linkedinUrl && li.linkedinUrl) patch.linkedinUrl = s(li.linkedinUrl);
+      }
 
       if (Object.keys(patch).length > 0) save({ ...p, ...patch });
     } catch (err) {
-      console.error('LinkedIn profile sync skipped:', err);
+      console.error('Profile sync skipped:', err);
     }
   }, [hydrated, user?.uid, user?.provider]);
 

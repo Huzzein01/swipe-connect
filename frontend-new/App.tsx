@@ -12,10 +12,40 @@ import { UserProfileProvider } from './contexts/UserProfileContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import AppNavigator from './navigation/AppNavigator';
 
+const linking = {
+  prefixes: ['http://localhost:8092', 'http://127.0.0.1:8092', 'https://swipe-connect-eight.vercel.app'],
+  config: {
+    screens: {
+      Login: 'login',
+      Register: 'register',
+      ForgotPassword: 'forgot-password',
+      Main: {
+        screens: {
+          Home: '',
+          Discover: 'discover',
+          Network: 'network',
+          Profile: 'profile',
+        },
+      },
+      Settings: 'settings',
+      Help: 'help',
+      JobFilters: 'job-preferences',
+      ResumeUpload: 'resume',
+      ResumeBuilder: 'resume-builder',
+      CoverLetter: 'cover-letter',
+      Privacy: 'privacy',
+      Chat: 'chat/:matchId?',
+      ConnectionProfile: 'connection/:profileId?',
+      Notifications: 'notifications',
+      Jobs: 'jobs',
+    },
+  },
+};
+
 const ThemedApp = () => {
   const { isDark } = useTheme();
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
     </NavigationContainer>

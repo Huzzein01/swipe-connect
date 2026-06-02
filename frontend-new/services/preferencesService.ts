@@ -2,10 +2,18 @@ import { UserPreferences } from '../types/job';
 import { db } from '../config/firebase';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 
+const requireDb = () => {
+  if (!db) {
+    throw new Error('Firebase database is not configured. Preferences are stored locally in demo mode.');
+  }
+  return db;
+};
+
 export const preferencesService = {
   // Save user preferences
   savePreferences: async (userId: string, preferences: UserPreferences): Promise<void> => {
-    const preferencesRef = doc(db, 'preferences', userId);
+    const database = requireDb();
+    const preferencesRef = doc(database, 'preferences', userId);
     await setDoc(preferencesRef, {
       ...preferences,
       lastUpdated: new Date().toISOString(),
@@ -14,7 +22,8 @@ export const preferencesService = {
 
   // Get user preferences
   getPreferences: async (userId: string): Promise<UserPreferences | null> => {
-    const preferencesRef = doc(db, 'preferences', userId);
+    const database = requireDb();
+    const preferencesRef = doc(database, 'preferences', userId);
     const preferencesDoc = await getDoc(preferencesRef);
 
     if (!preferencesDoc.exists()) {
@@ -26,7 +35,8 @@ export const preferencesService = {
 
   // Update user preferences
   updatePreferences: async (userId: string, updates: Partial<UserPreferences>): Promise<void> => {
-    const preferencesRef = doc(db, 'preferences', userId);
+    const database = requireDb();
+    const preferencesRef = doc(database, 'preferences', userId);
     await updateDoc(preferencesRef, {
       ...updates,
       lastUpdated: new Date().toISOString(),
@@ -55,7 +65,8 @@ export const preferencesService = {
     userId: string,
     location: { city: string; state: string; radius: number }
   ): Promise<void> => {
-    const preferencesRef = doc(db, 'preferences', userId);
+    const database = requireDb();
+    const preferencesRef = doc(database, 'preferences', userId);
     await updateDoc(preferencesRef, {
       location,
       lastUpdated: new Date().toISOString(),
@@ -64,7 +75,8 @@ export const preferencesService = {
 
   // Update industry preferences
   updateIndustryPreferences: async (userId: string, industries: string[]): Promise<void> => {
-    const preferencesRef = doc(db, 'preferences', userId);
+    const database = requireDb();
+    const preferencesRef = doc(database, 'preferences', userId);
     await updateDoc(preferencesRef, {
       industries,
       lastUpdated: new Date().toISOString(),
@@ -76,10 +88,11 @@ export const preferencesService = {
     userId: string,
     jobTypes: ('full-time' | 'part-time' | 'contract' | 'internship')[]
   ): Promise<void> => {
-    const preferencesRef = doc(db, 'preferences', userId);
+    const database = requireDb();
+    const preferencesRef = doc(database, 'preferences', userId);
     await updateDoc(preferencesRef, {
       jobTypes,
       lastUpdated: new Date().toISOString(),
     });
   },
-}; 
+};

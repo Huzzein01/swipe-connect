@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   stepNum: { fontSize: 11, fontWeight: FontWeight.bold },
   stepLabel: { fontSize: 10, fontWeight: FontWeight.semibold },
   stepLine: { flex: 1, height: 2, marginHorizontal: Spacing.xs },
-  scroll: { padding: Spacing.xl, paddingBottom: Spacing['4xl'] },
+  scroll: { flexGrow: 1, padding: Spacing.xl, paddingBottom: 140 },
   sectionTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.extrabold, marginBottom: Spacing.sm },
   sectionSub: { fontSize: FontSize.sm, lineHeight: 20, marginBottom: Spacing.xl },
   templateGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing.xl },

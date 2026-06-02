@@ -2,6 +2,13 @@ import { db } from '../config/firebase';
 import { collection, addDoc, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import * as Notifications from 'expo-notifications';
 
+const requireDb = () => {
+  if (!db) {
+    throw new Error('Firebase database is not configured. Notification history is stored locally in demo mode.');
+  }
+  return db;
+};
+
 export const notificationService = {
   // Request notification permissions
   requestPermissions: async () => {
@@ -40,7 +47,8 @@ export const notificationService = {
     newMatches: boolean;
     emailNotifications: boolean;
   }) => {
-    const notificationsRef = collection(db, 'notifications');
+    const database = requireDb();
+    const notificationsRef = collection(database, 'notifications');
     await addDoc(notificationsRef, {
       userId,
       ...preferences,
@@ -50,7 +58,8 @@ export const notificationService = {
 
   // Get user's notification history
   getNotificationHistory: async (userId: string) => {
-    const notificationsRef = collection(db, 'notifications');
+    const database = requireDb();
+    const notificationsRef = collection(database, 'notifications');
     const q = query(
       notificationsRef,
       where('userId', '==', userId),
@@ -61,4 +70,4 @@ export const notificationService = {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
-}; 
+};

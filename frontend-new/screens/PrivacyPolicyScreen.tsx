@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.xl, borderBottomWidth: 1 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  scroll: { padding: Spacing.xl, paddingBottom: Spacing['4xl'] },
+  scroll: { flexGrow: 1, padding: Spacing.xl, paddingBottom: 140 },
   updated: { fontSize: FontSize.sm, marginBottom: Spacing.xl },
   section: { marginBottom: Spacing['2xl'] },
   sectionTitle: { fontSize: FontSize.md, fontWeight: FontWeight.extrabold, marginBottom: Spacing.md },

@@ -236,6 +236,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
   const { createSampleResume, resume: savedResume, saveResume } = useDemo();
   const { profile, updateProfile } = useUserProfile();
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState('Parsing Resume with AI...');
   const [resume, setResume] = useState<Resume | null>(savedResume);
 
   useEffect(() => {
@@ -244,28 +245,78 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
 
   // Merge parsed resume fields into UserProfile — only fills empty fields,
   // always merges skills (union, no duplicates).
+  const isBlankish = (value?: string) => {
+    const normalized = (value || '').trim().toLowerCase();
+    return !normalized || ['your name', 'preview user', 'add your professional title', 'professional'].includes(normalized);
+  };
+
+  const mergeUnique = (current: string[], incoming: string[]) => {
+    const seen = new Set(current.map((item) => item.toLowerCase()));
+    return [...current, ...incoming.filter((item) => item && !seen.has(item.toLowerCase()))];
+  };
+
+  const inferExperienceYears = (startDate?: string) => {
+    const year = Number(startDate?.match(/\b(19|20)\d{2}\b/)?.[0]);
+    if (!year || year > new Date().getFullYear()) return '';
+    const years = Math.max(0, new Date().getFullYear() - year);
+    if (years <= 1) return '0-1 year';
+    if (years <= 3) return '1-3 years';
+    if (years < 5) return '3-5 years';
+    if (years <= 8) return '5-8 years';
+    if (years <= 12) return '8-12 years';
+    return '12+ years';
+  };
+
+  const inferIndustries = (skills: string[]) => {
+    const haystack = skills.join(' ').toLowerCase();
+    const industries: string[] = [];
+    if (/react|typescript|javascript|node|python|sql|aws|docker|mongodb/.test(haystack)) industries.push('Technology');
+    if (/analytics|sql|python|data/.test(haystack)) industries.push('Data');
+    if (/figma|research|product|strategy/.test(haystack)) industries.push('Product');
+    if (/ai|machine learning|llm/.test(haystack)) industries.push('AI');
+    return industries.length ? industries : ['Technology'];
+  };
+
   const syncResumeToProfile = async (parsed: Resume, summary?: string) => {
     const d = parsed.parsedData;
+    const latest = d.experience?.[0];
+    const skills = d.skills || [];
+    const role = latest?.title || '';
+    const company = latest?.company || '';
+    const inferredExperience = inferExperienceYears(latest?.startDate);
     const patch: Record<string, any> = {};
 
-    if (!profile.displayName && d.name) patch.displayName = d.name;
+    if (isBlankish(profile.displayName) && d.name) patch.displayName = d.name;
     if (!profile.email && d.email) patch.email = d.email;
     if (!profile.phone && d.phone) patch.phone = d.phone;
     if (!profile.location && d.location?.city) {
       patch.location = `${d.location.city}, ${d.location.state || ''}`.trim().replace(/,$/, '');
     }
-    if (!profile.title && d.experience?.[0]?.title) patch.title = d.experience[0].title;
-    if (!profile.currentCompany && d.experience?.[0]?.company) patch.currentCompany = d.experience[0].company;
-    // Professional summary → bio (the AI experience summary)
-    if (!profile.bio && summary) patch.bio = summary;
+    if (isBlankish(profile.title) && role) patch.title = role;
+    if (!profile.currentCompany && company && company !== 'Recent Company') patch.currentCompany = company;
+    if ((!profile.experienceYears || profile.experienceYears === '3-5 years') && inferredExperience) {
+      patch.experienceYears = inferredExperience;
+    }
+    const resumeSummary = summary || latest?.description || '';
+    if (!profile.bio && resumeSummary) patch.bio = resumeSummary;
 
     // Always merge skills — union of existing + newly extracted
-    if (d.skills?.length) {
-      const existing = new Set(profile.skills.map((s) => s.toLowerCase()));
-      const newSkills = d.skills.filter((s) => !existing.has(s.toLowerCase()));
-      if (newSkills.length > 0) {
-        patch.skills = [...profile.skills, ...newSkills];
-      }
+    if (skills.length) {
+      patch.skills = mergeUnique(profile.skills, skills);
+      patch.industries = mergeUnique(profile.industries, inferIndustries(skills));
+    }
+
+    if (role) {
+      patch.targetRoles = mergeUnique(profile.targetRoles, [role]);
+      if (!profile.openToRoles) patch.openToRoles = `${role} roles`;
+    }
+
+    if (skills.length && !profile.networkingGoals) {
+      patch.networkingGoals = `Open to collaborating on projects involving ${skills.slice(0, 3).join(', ')}.`;
+    }
+
+    if (skills.length && profile.projectIdeas.length === 0) {
+      patch.projectIdeas = [`Build a product using ${skills.slice(0, 2).join(' and ')}`];
     }
 
     if (Object.keys(patch).length > 0) {
@@ -289,6 +340,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const pickedFile = result.assets[0];
         setIsLoading(true);
+        setLoadingLabel('Parsing resume...');
         const { resume: parsedResume, summary } = await parseResumeFile(
           pickedFile,
           user?.uid || 'preview-user',
@@ -298,7 +350,6 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
         setResume(parsedResume);
         await saveResume(parsedResume);
         await syncResumeToProfile(parsedResume, summary);
-        setIsLoading(false);
         Alert.alert(
           'Resume synced',
           `${pickedFile.name} was parsed with AI. Your name, skills, and professional summary were added to your profile.`
@@ -306,6 +357,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to attach and parse resume. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -313,6 +365,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
   const handleSave = async () => {
     if (!resume) return;
     setIsLoading(true);
+    setLoadingLabel('Saving resume...');
     try {
       await new Promise((resolve) => setTimeout(resolve, 600));
       await saveResume(resume);
@@ -328,6 +381,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
 
   const handleSampleResume = async () => {
     setIsLoading(true);
+    setLoadingLabel('Creating sample resume...');
     try {
       await new Promise((resolve) => setTimeout(resolve, 500));
       const sampleResume = createSampleResume(user?.uid || 'preview-user');
@@ -335,6 +389,8 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
       await saveResume(sampleResume);
       await syncResumeToProfile(sampleResume);
       Alert.alert('Sample resume ready', 'Skills and experience were synced to your profile and the matching engine.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create the sample resume.');
     } finally {
       setIsLoading(false);
     }
@@ -342,7 +398,12 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.headerSection}>
@@ -390,7 +451,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.primary} />
               <Text style={[styles.loadingText, { color: theme.mutedForeground }]}>
-                {resume ? 'Saving...' : 'Parsing Resume with AI...'}
+                {loadingLabel}
               </Text>
             </View>
           )}
@@ -506,6 +567,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingBottom: 140 },
   content: { padding: Spacing.xl },
   headerSection: { alignItems: 'center', marginBottom: Spacing['3xl'] },
   headerIcon: {

@@ -491,6 +491,12 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   // ─── UI ───────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView
+        style={styles.screenScroll}
+        contentContainerStyle={styles.screenScrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       {/* Mode toggle + filter button (captions removed) */}
       <View style={styles.toggleRow}>
         <View style={[styles.toggle, styles.toggleFlex, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -640,6 +646,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
           </Pressable>
         </View>
       )}
+      </ScrollView>
 
       {/* Job detail modal */}
       <Modal visible={Boolean(detailJob)} animationType="slide" transparent onRequestClose={() => setDetailJob(null)}>
@@ -811,6 +818,8 @@ const JobSwipeScreen = ({ navigation }: Props) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  screenScroll: { flex: 1 },
+  screenScrollContent: { flexGrow: 1, paddingBottom: 128 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, paddingBottom: Spacing.sm },
   kicker: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, marginBottom: 2 },
   headerTitle: { fontSize: FontSize['2xl'], fontWeight: FontWeight.extrabold },
@@ -826,8 +835,8 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: FontSize.xs, marginTop: 2 },
   statusBanner: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: BorderRadius.lg, gap: Spacing.sm, marginHorizontal: Spacing.xl, marginBottom: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
   statusText: { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  deck: { flex: 1, paddingHorizontal: Spacing.xl },
-  stage: { flex: 1, justifyContent: 'center' },
+  deck: { paddingHorizontal: Spacing.xl, minHeight: CARD_HEIGHT + 34 },
+  stage: { minHeight: CARD_HEIGHT + 34, justifyContent: 'center' },
   behindCard: { position: 'absolute', left: 8, right: 8, top: 20, opacity: 0.42, transform: [{ scale: 0.96 }] },
   frontCard: { width: '100%' },
   card: { borderWidth: 1, borderRadius: BorderRadius['2xl'], padding: Spacing.xl, overflow: 'hidden' },
@@ -862,7 +871,7 @@ const styles = StyleSheet.create({
   applyLabel: { right: 20, borderColor: '#10B981' },
   skipLabel: { left: 20, borderColor: '#EF4444' },
   swipeLabelText: { fontSize: FontSize.lg, fontWeight: FontWeight.extrabold, letterSpacing: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing['2xl'] },
+  center: { minHeight: CARD_HEIGHT, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing['2xl'] },
   loadingText: { fontSize: FontSize.md, marginTop: Spacing.md },
   loadingSubText: { fontSize: FontSize.sm, marginTop: Spacing.sm, opacity: 0.7 },
   emptyIcon: { width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg },

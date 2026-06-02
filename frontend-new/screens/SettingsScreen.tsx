@@ -106,7 +106,12 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Display Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Appearance</Text>
@@ -347,6 +352,7 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingBottom: 140 },
   section: {
     paddingHorizontal: Spacing.xl,
     marginBottom: Spacing['2xl'],

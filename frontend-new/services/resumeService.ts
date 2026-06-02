@@ -11,31 +11,40 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { aiService, FileAsset } from './aiService';
 
+const requireFirebase = () => {
+  if (!db || !storage) {
+    throw new Error('Firebase storage is not configured. Use local resume upload in demo mode.');
+  }
+  return { db, storage };
+};
+
 export const resumeService = {
   uploadResume: async (userId: string, file: FileAsset): Promise<Resume> => {
+    const firebase = requireFirebase();
     const response = await fetch(file.uri);
     const blob = await response.blob();
 
-    const storageRef = ref(storage, `resumes/${userId}/${file.name}`);
+    const storageRef = ref(firebase.storage, `resumes/${userId}/${file.name}`);
     await uploadBytes(storageRef, blob);
     const fileUrl = await getDownloadURL(storageRef);
 
     const parsedResume = await aiService.parseResume(file);
 
     const resumeData: Resume = {
-      id: doc(collection(db, 'resumes')).id,
+      id: doc(collection(firebase.db, 'resumes')).id,
       userId,
       fileUrl,
       parsedData: parsedResume.parsedData,
       lastUpdated: new Date().toISOString(),
     };
 
-    await setDoc(doc(db, 'resumes', resumeData.id), resumeData);
+    await setDoc(doc(firebase.db, 'resumes', resumeData.id), resumeData);
     return resumeData;
   },
 
   getResume: async (userId: string): Promise<Resume | null> => {
-    const resumeRef = doc(db, 'resumes', userId);
+    const firebase = requireFirebase();
+    const resumeRef = doc(firebase.db, 'resumes', userId);
     const resumeDoc = await getDoc(resumeRef);
 
     if (!resumeDoc.exists()) {
@@ -46,7 +55,8 @@ export const resumeService = {
   },
 
   updateResume: async (resumeId: string, updates: Partial<Resume>): Promise<void> => {
-    const resumeRef = doc(db, 'resumes', resumeId);
+    const firebase = requireFirebase();
+    const resumeRef = doc(firebase.db, 'resumes', resumeId);
     await updateDoc(resumeRef, {
       ...updates,
       lastUpdated: new Date().toISOString(),
@@ -54,9 +64,10 @@ export const resumeService = {
   },
 
   deleteResume: async (resumeId: string, fileUrl: string): Promise<void> => {
-    await deleteDoc(doc(db, 'resumes', resumeId));
+    const firebase = requireFirebase();
+    await deleteDoc(doc(firebase.db, 'resumes', resumeId));
 
-    const storageRef = ref(storage, fileUrl);
+    const storageRef = ref(firebase.storage, fileUrl);
     await deleteObject(storageRef);
   },
 

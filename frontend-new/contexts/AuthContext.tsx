@@ -199,6 +199,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    if (!auth) {
+      boot();
+      return () => {
+        mounted = false;
+      };
+    }
+
     // Always listen to Firebase auth state; boot() handles preview/LinkedIn sessions
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
       if (!mounted) return;
@@ -225,6 +232,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, displayName: string) => {
     setAuthActionLoading(true);
     try {
+      if (!auth) {
+        throw new Error('Email/password signup is not available until Firebase is configured.');
+      }
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(cred.user, { displayName });
       setUser({ ...toAuthUser(cred.user), displayName });
@@ -241,6 +251,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     setAuthActionLoading(true);
     try {
+      if (!auth) {
+        throw new Error('Email/password sign in is not available until Firebase is configured. Use Preview Account for the demo.');
+      }
       const cred = await signInWithEmailAndPassword(auth, email, password);
       setUser(toAuthUser(cred.user));
       await clearPersistedSession();
@@ -271,7 +284,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthActionLoading(true);
     try {
       await clearPersistedSession();
-      await signOut(auth);
+      if (auth) {
+        await signOut(auth);
+      }
       setUser(null);
     } finally {
       setAuthActionLoading(false);
@@ -282,6 +297,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resetPassword = async (email: string) => {
     setAuthActionLoading(true);
     try {
+      if (!auth) {
+        throw new Error('Password reset is not available until Firebase is configured.');
+      }
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
       throw firebaseAuthError(error);
@@ -293,7 +311,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ─── Update profile ────────────────────────────────────────────────────────
   const updateUserProfile = async (displayName: string, photoURL?: string) => {
     if (!user) throw new Error('No user logged in');
-    if (auth.currentUser) await updateProfile(auth.currentUser, { displayName, photoURL });
+    if (auth?.currentUser) await updateProfile(auth.currentUser, { displayName, photoURL });
     const updated = { ...user, displayName, photoURL: photoURL ?? user.photoURL };
     setUser(updated);
     // Keep persisted session up to date if it's a preview user

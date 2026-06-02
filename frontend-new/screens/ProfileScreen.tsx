@@ -313,7 +313,12 @@ const ProfileScreen = ({ navigation }: Props) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing['4xl'] }}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
+      >
 
         {/* ── Hero card ───────────────────────────────────────────────────── */}
         <View style={[styles.heroCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -585,6 +590,8 @@ const ProfileScreen = ({ navigation }: Props) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingBottom: 140 },
   // Hero
   heroCard: { margin: Spacing.xl, borderRadius: BorderRadius['2xl'], borderWidth: 1, padding: Spacing['2xl'], alignItems: 'center' },
   avatarWrap: { position: 'relative', marginBottom: Spacing.lg },

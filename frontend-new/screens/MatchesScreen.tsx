@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: FontSize.xl, fontWeight: FontWeight.extrabold },
   statLabel: { fontSize: FontSize.xs, marginTop: 2 },
   statDivider: { width: 1, marginVertical: Spacing.xs },
-  list: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm, paddingBottom: Spacing['4xl'] },
+  list: { flexGrow: 1, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm, paddingBottom: 140 },
   card: {
     flexDirection: 'row', alignItems: 'center', borderRadius: BorderRadius.xl,
     borderWidth: 1, padding: Spacing.lg, gap: Spacing.md,

@@ -89,7 +89,11 @@ const HelpScreen = ({ navigation }: HelpScreenProps) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={[styles.headerIcon, { backgroundColor: `${theme.warning}15` }]}>
@@ -138,6 +142,7 @@ const HelpScreen = ({ navigation }: HelpScreenProps) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingBottom: 140 },
   header: {
     alignItems: 'center',
     paddingHorizontal: Spacing.xl,

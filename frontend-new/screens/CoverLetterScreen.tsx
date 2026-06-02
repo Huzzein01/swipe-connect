@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: FontSize.xs, marginTop: 2 },
   premiumTag: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: BorderRadius.full, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
   premiumTagText: { fontSize: 10, fontWeight: FontWeight.extrabold },
-  scroll: { padding: Spacing.xl, paddingBottom: Spacing['4xl'] },
+  scroll: { flexGrow: 1, padding: Spacing.xl, paddingBottom: 140 },
   infoBanner: { flexDirection: 'row', gap: Spacing.sm, borderWidth: 1, borderRadius: BorderRadius.xl, padding: Spacing.lg, marginBottom: Spacing.xl, alignItems: 'flex-start' },
   infoText: { flex: 1, fontSize: FontSize.sm, lineHeight: 20 },
   label: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, textTransform: 'uppercase', letterSpacing: 0.4 },

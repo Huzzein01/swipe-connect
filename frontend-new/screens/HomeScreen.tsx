@@ -218,7 +218,7 @@ const HomeScreen = ({ navigation }: Props) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { paddingBottom: Spacing['4xl'] },
+  scroll: { flexGrow: 1, paddingBottom: 140 },
   // Top bar
   topBar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.xl, paddingTop: Spacing.xl, marginBottom: Spacing.xl },
   avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2 },

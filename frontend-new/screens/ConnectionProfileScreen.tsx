@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.lg, borderBottomWidth: 1 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  scroll: { padding: Spacing.xl, gap: Spacing.md },
+  scroll: { flexGrow: 1, padding: Spacing.xl, paddingBottom: 140, gap: Spacing.md },
   hero: { borderWidth: 1, borderRadius: BorderRadius['2xl'], padding: Spacing['2xl'], alignItems: 'center', marginBottom: Spacing.md },
   avatar: { width: 88, height: 88, borderRadius: 44, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md },
   avatarText: { fontSize: FontSize['2xl'], fontWeight: FontWeight.extrabold },
