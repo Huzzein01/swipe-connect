@@ -1,31 +1,99 @@
 import axios from 'axios';
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_VERSION = '2023-06-01';
+/**
+ * Multi-provider LLM layer.
+ * Tries providers in priority order based on which API keys are present:
+ *   1. Google Gemini   (GEMINI_API_KEY)    — free tier, generous limits
+ *   2. DeepSeek        (DEEPSEEK_API_KEY)  — free/cheap, OpenAI-compatible
+ *   3. Anthropic Claude(ANTHROPIC_API_KEY) — fallback
+ * Throws only if every configured provider fails (or none configured).
+ */
 
-const callClaude = async (model: string, prompt: string, maxTokens = 1024): Promise<string> => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
 
-  const response = await axios.post(
-    ANTHROPIC_API_URL,
+const callGemini = async (prompt: string, maxTokens: number): Promise<string> => {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('no-gemini');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+  const res = await axios.post(
+    url,
     {
-      model,
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
     },
+    { headers: { 'content-type': 'application/json' }, timeout: 25000 }
+  );
+  const text = res.data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join('') || '';
+  if (!text) throw new Error('gemini-empty');
+  return text;
+};
+
+const callDeepSeek = async (prompt: string, maxTokens: number): Promise<string> => {
+  const key = process.env.DEEPSEEK_API_KEY;
+  if (!key) throw new Error('no-deepseek');
+  const res = await axios.post(
+    'https://api.deepseek.com/chat/completions',
     {
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': ANTHROPIC_VERSION,
-        'content-type': 'application/json',
-      },
-      timeout: 20000,
+      model: DEEPSEEK_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: maxTokens,
+      temperature: 0.7,
+    },
+    { headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' }, timeout: 25000 }
+  );
+  const text = res.data?.choices?.[0]?.message?.content || '';
+  if (!text) throw new Error('deepseek-empty');
+  return text;
+};
+
+const callAnthropic = async (prompt: string, maxTokens: number): Promise<string> => {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error('no-anthropic');
+  const res = await axios.post(
+    'https://api.anthropic.com/v1/messages',
+    { model: ANTHROPIC_MODEL, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] },
+    {
+      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      timeout: 25000,
     }
   );
-
-  return response.data?.content?.[0]?.text || '';
+  const text = res.data?.content?.[0]?.text || '';
+  if (!text) throw new Error('anthropic-empty');
+  return text;
 };
+
+/** Returns true if at least one provider key is configured. */
+export const hasAnyProvider = (): boolean =>
+  Boolean(process.env.GEMINI_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.ANTHROPIC_API_KEY);
+
+/** Try each configured provider in priority order; return first success. */
+const callLLM = async (prompt: string, maxTokens = 1024): Promise<string> => {
+  const providers: Array<{ name: string; fn: () => Promise<string> }> = [
+    { name: 'gemini', fn: () => callGemini(prompt, maxTokens) },
+    { name: 'deepseek', fn: () => callDeepSeek(prompt, maxTokens) },
+    { name: 'anthropic', fn: () => callAnthropic(prompt, maxTokens) },
+  ];
+
+  let lastErr: any;
+  for (const p of providers) {
+    try {
+      return await p.fn();
+    } catch (err: any) {
+      // "no-*" means key absent — skip quietly. Other errors: log and try next.
+      if (!String(err?.message).startsWith('no-')) {
+        console.warn(`[ai] ${p.name} failed:`, err?.response?.data?.error?.message || err?.message);
+      }
+      lastErr = err;
+    }
+  }
+  throw new Error(lastErr?.message || 'No AI provider configured');
+};
+
+// Back-compat shim — existing callers used callClaude(model, prompt, tokens)
+const callClaude = (_model: string, prompt: string, maxTokens = 1024): Promise<string> =>
+  callLLM(prompt, maxTokens);
 
 export type MatchAnalysis = {
   score: number;            // 0–100
@@ -121,7 +189,14 @@ export type CoverLetterResult = {
   wordCount: number;
 };
 
-/** AI cover letter generation using Sonnet */
+const TONE_GUIDE: Record<string, string> = {
+  professional: 'polished, confident, business-formal. Measured and precise.',
+  enthusiastic: 'warm and energetic while staying professional. Show genuine excitement.',
+  concise: 'tight and direct. Short sentences, no filler, every line earns its place.',
+  storytelling: 'open with a brief, specific anecdote that illustrates a relevant strength, then connect it to the role.',
+};
+
+/** AI cover letter generation — follows a clean professional template */
 export const generateCoverLetter = async (
   jobTitle: string,
   company: string,
@@ -131,33 +206,57 @@ export const generateCoverLetter = async (
   candidateTitle: string,
   candidateSkills: string[],
   candidateBio: string,
-  candidateExperience: string
+  candidateExperience: string,
+  contact?: { email?: string; phone?: string; location?: string; linkedin?: string }
 ): Promise<CoverLetterResult> => {
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const toneKey = (tone || 'professional').toLowerCase();
+  const toneNote = TONE_GUIDE[toneKey] || TONE_GUIDE.professional;
 
-  const prompt = `Write a professional cover letter for a job application. Return only the cover letter text — no JSON, no markdown, no explanation.
+  const contactBlock = [
+    candidateName,
+    contact?.email,
+    contact?.phone,
+    contact?.location,
+    contact?.linkedin,
+  ].filter(Boolean).join(' | ');
 
-Position: ${jobTitle} at ${company}
-Tone: ${tone}
-Date: ${today}
-Candidate name: ${candidateName}
-Candidate title: ${candidateTitle}
-Candidate skills: ${candidateSkills.join(', ')}
-Candidate bio: ${candidateBio}
-Years of experience: ${candidateExperience}
-${jobDescription ? `Job description:\n${jobDescription.slice(0, 800)}` : ''}
+  const prompt = `Write a complete, ready-to-send cover letter. Return ONLY the letter text — no markdown, no commentary, no placeholders like [Your Name].
 
-Guidelines:
-- Start with the date, then "Dear Hiring Manager,"
-- 3–4 paragraphs: hook, relevant experience, why this company, closing
-- Tone: ${tone.toLowerCase()}
-- Do NOT use clichés like "I am writing to apply" or "passionate"
-- End with "Sincerely,\\n${candidateName}"
-- Keep under 400 words`;
+=== CANDIDATE ===
+Name: ${candidateName}
+Current title: ${candidateTitle || 'Professional'}
+Experience: ${candidateExperience || 'several years'}
+Top skills: ${candidateSkills.slice(0, 8).join(', ') || 'relevant skills'}
+Background: ${candidateBio || 'experienced professional'}
+Contact line to use as the header: ${contactBlock}
 
-  const text = await callClaude('claude-sonnet-4-5', prompt, 1024);
-  const words = text.trim().split(/\s+/).length;
-  return { letter: text.trim(), wordCount: words };
+=== ROLE ===
+Position: ${jobTitle}
+Company: ${company}
+${jobDescription ? `Job description:\n${jobDescription.slice(0, 900)}` : ''}
+
+=== FORMAT (follow exactly) ===
+Line 1: ${contactBlock}
+Line 2: (blank)
+Line 3: ${today}
+Line 4: (blank)
+Line 5: Dear Hiring Manager,
+Then 3 short paragraphs:
+  1. A specific hook — why this role at ${company} fits the candidate (no "I am writing to apply").
+  2. Concrete evidence: tie 2–3 of the candidate's skills/experience to the job's needs.
+  3. Forward-looking close + a call to action for an interview.
+Then: Sincerely,
+Then: ${candidateName}
+
+=== STYLE ===
+Tone: ${toneNote}
+- Under 320 words. No clichés ("passionate", "team player", "hit the ground running").
+- Specific, human, and tailored to ${company}. Never invent fake metrics or employers.`;
+
+  const text = await callLLM(prompt, 1024);
+  const clean = text.trim();
+  return { letter: clean, wordCount: clean.split(/\s+/).length };
 };
 
 // ─── Fallback scoring (no API key, or Claude unavailable) ─────────────────────

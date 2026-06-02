@@ -15,49 +15,54 @@ const NetworkScreen = ({ navigation }: Props) => {
 
   const renderItem = ({ item }: { item: NetworkMatch }) => {
     const p = item.profile;
-    const since = new Date(item.matchedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const isNew = !item.lastMessage;
 
     return (
-      <TouchableOpacity
-        style={[styles.card, { backgroundColor: theme.card, borderColor: isNew ? `${theme.accent}40` : theme.border }]}
-        onPress={() => navigation.navigate('Chat', { matchId: item.id })}
-        activeOpacity={0.75}
-      >
-        {/* Avatar */}
-        <View style={[styles.avatarWrap, { backgroundColor: `${theme.accent}18`, borderColor: `${theme.accent}30` }]}>
-          <Text style={[styles.avatarText, { color: theme.accent }]}>{p.avatar}</Text>
-          {isNew && <View style={[styles.activeDot, { backgroundColor: theme.success }]} />}
-        </View>
+      <View style={[styles.card, { backgroundColor: theme.card, borderColor: isNew ? `${theme.accent}40` : theme.border }]}>
+        {/* Tap avatar + info to view full profile */}
+        <TouchableOpacity
+          style={styles.cardMain}
+          onPress={() => navigation.navigate('ConnectionProfile', { profileId: p.id })}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.avatarWrap, { backgroundColor: `${theme.accent}18`, borderColor: `${theme.accent}30` }]}>
+            <Text style={[styles.avatarText, { color: theme.accent }]}>{p.avatar}</Text>
+            {isNew && <View style={[styles.activeDot, { backgroundColor: theme.success }]} />}
+          </View>
 
-        <View style={styles.info}>
-          <Text style={[styles.name, { color: theme.foreground }]}>{p.name}</Text>
-          <Text style={[styles.role, { color: theme.mutedForeground }]} numberOfLines={1}>
-            {p.title} · {p.company}
-          </Text>
-          {item.lastMessage ? (
-            <Text style={[styles.lastMsg, { color: theme.mutedForeground }]} numberOfLines={1}>
-              {item.lastMessage}
+          <View style={styles.info}>
+            <Text style={[styles.name, { color: theme.foreground }]}>{p.name}</Text>
+            <Text style={[styles.role, { color: theme.mutedForeground }]} numberOfLines={1}>
+              {p.title} · {p.company}
             </Text>
-          ) : (
-            <View style={styles.newRow}>
-              <View style={[styles.newTag, { backgroundColor: `${theme.accent}18` }]}>
-                <Text style={[styles.newTagText, { color: theme.accent }]}>New connection</Text>
+            {item.lastMessage ? (
+              <Text style={[styles.lastMsg, { color: theme.mutedForeground }]} numberOfLines={1}>
+                {item.lastMessage}
+              </Text>
+            ) : (
+              <View style={styles.newRow}>
+                <View style={[styles.newTag, { backgroundColor: `${theme.accent}18` }]}>
+                  <Text style={[styles.newTagText, { color: theme.accent }]}>Tap to view profile</Text>
+                </View>
               </View>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        </TouchableOpacity>
 
-        <View style={styles.meta}>
-          <Text style={[styles.time, { color: theme.mutedForeground }]}>{since}</Text>
+        {/* Message button */}
+        <TouchableOpacity
+          style={[styles.msgBtn, { backgroundColor: `${theme.accent}15` }]}
+          onPress={() => navigation.navigate('Chat', { matchId: item.id })}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chatbubble-outline" size={18} color={theme.accent} />
           {item.unreadCount > 0 && (
             <View style={[styles.badge, { backgroundColor: theme.accent }]}>
               <Text style={styles.badgeText}>{item.unreadCount}</Text>
             </View>
           )}
-          <Ionicons name="chevron-forward" size={16} color={theme.mutedForeground} />
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -157,6 +162,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', borderRadius: BorderRadius.xl,
     borderWidth: 1, padding: Spacing.lg, gap: Spacing.md,
   },
+  cardMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  msgBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   avatarWrap: {
     width: 52, height: 52, borderRadius: 26, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative',
@@ -172,7 +179,7 @@ const styles = StyleSheet.create({
   newTagText: { fontSize: 11, fontWeight: FontWeight.bold },
   meta: { alignItems: 'flex-end', gap: Spacing.xs },
   time: { fontSize: FontSize.xs },
-  badge: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent' },
   badgeText: { fontSize: 10, color: '#fff', fontWeight: FontWeight.bold },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing['3xl'] },
   emptyIconWrap: { width: 86, height: 86, borderRadius: 43, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xl },

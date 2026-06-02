@@ -72,11 +72,12 @@ const requestJson = async <T>(path: string, options?: RequestInit): Promise<T> =
 };
 
 const queryFromPreferences = (preferences?: UserPreferences) => {
+  const expLevel = preferences?.experienceLevel;
   const terms = [
     ...(preferences?.industries || []),
     ...(preferences?.jobTypes || []),
     preferences?.remote ? 'remote' : '',
-    preferences?.experienceLevel || '',
+    expLevel && expLevel !== 'all' ? expLevel : '',
   ].filter(Boolean);
 
   return terms.length > 0 ? terms.join(' ') : 'react native product manager data analyst';

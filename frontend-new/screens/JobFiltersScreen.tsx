@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useDemo } from '../contexts/DemoContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useUserProfile } from '../contexts/UserProfileContext';
 import { UserPreferences } from '../types/job';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 import MapLocationPicker from '../components/MapLocationPicker';
@@ -21,9 +22,13 @@ type JobFiltersScreenProps = {
   navigation: any;
 };
 
+const ALL_JOB_TYPES: UserPreferences['jobTypes'] = ['full-time', 'part-time', 'contract', 'internship'];
+const EXPERIENCE_LEVELS: UserPreferences['experienceLevel'][] = ['all', 'entry', 'mid', 'senior', 'executive'];
+
 const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
   const { theme, isDark } = useTheme();
   const { preferences: savedPreferences, savePreferences } = useDemo();
+  const { updateProfile } = useUserProfile();
   const [preferences, setPreferences] = useState<UserPreferences>(savedPreferences);
 
   useEffect(() => {
@@ -32,12 +37,26 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
 
   const handleSave = async () => {
     await savePreferences(preferences);
+    // Sync the chosen location into the user profile (where they want jobs)
+    if (preferences.location.city) {
+      await updateProfile({
+        location: `${preferences.location.city}${preferences.location.state ? ', ' + preferences.location.state : ''}`,
+      });
+    }
     Alert.alert('Preferences saved', 'Your swipe deck will rebuild around these filters.');
     navigation.goBack();
   };
 
-  const jobTypes = ['full-time', 'part-time', 'contract', 'internship'];
-  const experienceLevels = ['entry', 'mid', 'senior', 'executive'];
+  const jobTypes = ALL_JOB_TYPES;
+  const experienceLevels = EXPERIENCE_LEVELS;
+  const allJobTypesSelected = preferences.jobTypes.length === ALL_JOB_TYPES.length;
+
+  const toggleAllJobTypes = () => {
+    setPreferences({
+      ...preferences,
+      jobTypes: allJobTypesSelected ? ['full-time'] : [...ALL_JOB_TYPES],
+    });
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -114,6 +133,16 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Job Type</Text>
           <View style={styles.chipRow}>
+            {/* All chip */}
+            <TouchableOpacity
+              style={[styles.chip, { backgroundColor: allJobTypesSelected ? theme.primary : theme.muted }]}
+              onPress={toggleAllJobTypes}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.chipText, { color: allJobTypesSelected ? theme.primaryForeground : theme.foreground }]}>
+                All
+              </Text>
+            </TouchableOpacity>
             {jobTypes.map((type) => {
               const isSelected = preferences.jobTypes.includes(type as any);
               return (
@@ -127,7 +156,8 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
                     const newTypes = isSelected
                       ? preferences.jobTypes.filter((t) => t !== type)
                       : [...preferences.jobTypes, type as any];
-                    setPreferences({ ...preferences, jobTypes: newTypes });
+                    // Never allow an empty selection — fall back to full-time
+                    setPreferences({ ...preferences, jobTypes: newTypes.length > 0 ? newTypes : ['full-time'] });
                   }}
                   activeOpacity={0.7}
                 >
@@ -149,6 +179,7 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
           <View style={styles.chipRow}>
             {experienceLevels.map((level) => {
               const isSelected = preferences.experienceLevel === level;
+              const label = level === 'all' ? 'All' : level.charAt(0).toUpperCase() + level.slice(1);
               return (
                 <TouchableOpacity
                   key={level}
@@ -156,14 +187,14 @@ const JobFiltersScreen = ({ navigation }: JobFiltersScreenProps) => {
                     styles.chip,
                     { backgroundColor: isSelected ? theme.secondary : theme.muted },
                   ]}
-                  onPress={() => setPreferences({ ...preferences, experienceLevel: level as any })}
+                  onPress={() => setPreferences({ ...preferences, experienceLevel: level })}
                   activeOpacity={0.7}
                 >
                   <Text style={[
                     styles.chipText,
                     { color: isSelected ? '#FFFFFF' : theme.foreground },
                   ]}>
-                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                    {label}
                   </Text>
                 </TouchableOpacity>
               );

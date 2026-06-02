@@ -42,7 +42,7 @@ export interface UserPreferences {
     max: number;
   };
   remote: boolean;
-  experienceLevel: 'entry' | 'mid' | 'senior' | 'executive';
+  experienceLevel: 'all' | 'entry' | 'mid' | 'senior' | 'executive';
 }
 
 export interface Resume {

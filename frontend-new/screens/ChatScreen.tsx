@@ -120,42 +120,54 @@ const ChatScreen = ({ navigation, route }: Props) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Profile banner */}
-      <TouchableOpacity
-        style={[styles.profileBanner, { backgroundColor: theme.card, borderColor: theme.border }]}
-        activeOpacity={0.8}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={[styles.bannerAvatar, { backgroundColor: `${theme.accent}20` }]}>
-          <Text style={[styles.bannerAvatarText, { color: theme.accent }]}>{match.profile.avatar}</Text>
-        </View>
-        <View style={styles.bannerInfo}>
-          <Text style={[styles.bannerName, { color: theme.foreground }]}>{match.profile.name}</Text>
-          <Text style={[styles.bannerTitle, { color: theme.mutedForeground }]}>{match.profile.title} · {match.profile.company}</Text>
-        </View>
-        <View style={[styles.matchBadge, { backgroundColor: `${theme.success}15` }]}>
-          <Text style={[styles.matchBadgeText, { color: theme.success }]}>{match.profile.matchScore}% match</Text>
-        </View>
-      </TouchableOpacity>
-
-      {/* Messages */}
-      <FlatList
-        ref={listRef}
-        data={thread}
-        keyExtractor={(item) => item.id}
-        renderItem={renderMessage}
-        contentContainerStyle={styles.messageList}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyChat}>
-            <Text style={[styles.emptyChatText, { color: theme.mutedForeground }]}>
-              You matched with {match.profile.name}. {'\n'}Start the conversation!
+        {/* Profile banner — tap to view full profile */}
+        <TouchableOpacity
+          style={[styles.profileBanner, { backgroundColor: theme.card, borderColor: theme.border }]}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('ConnectionProfile', { profileId: match.profile.id })}
+        >
+          <View style={[styles.bannerAvatar, { backgroundColor: `${theme.accent}20` }]}>
+            <Text style={[styles.bannerAvatarText, { color: theme.accent }]}>{match.profile.avatar}</Text>
+          </View>
+          <View style={styles.bannerInfo}>
+            <Text style={[styles.bannerName, { color: theme.foreground }]}>{match.profile.name}</Text>
+            <Text style={[styles.bannerTitle, { color: theme.mutedForeground }]} numberOfLines={1}>
+              {match.profile.title} · {match.profile.company}
             </Text>
           </View>
-        }
-      />
+          <View style={[styles.matchBadge, { backgroundColor: `${theme.success}15` }]}>
+            <Text style={[styles.matchBadgeText, { color: theme.success }]}>{match.profile.matchScore}%</Text>
+          </View>
+        </TouchableOpacity>
 
-      {/* Input bar */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* Messages — flex:1 so it fills the space between banner and input */}
+        <FlatList
+          ref={listRef}
+          style={styles.list}
+          data={thread}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMessage}
+          contentContainerStyle={[styles.messageList, thread.length === 0 && styles.messageListEmpty]}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyChat}>
+              <View style={[styles.emptyIcon, { backgroundColor: `${theme.accent}15` }]}>
+                <Ionicons name="chatbubbles-outline" size={32} color={theme.accent} />
+              </View>
+              <Text style={[styles.emptyChatTitle, { color: theme.foreground }]}>You're connected with {match.profile.name}</Text>
+              <Text style={[styles.emptyChatText, { color: theme.mutedForeground }]}>
+                Say hello and start the conversation.
+              </Text>
+            </View>
+          }
+        />
+
+        {/* Input bar */}
         <View style={[styles.inputBar, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <TouchableOpacity style={styles.attachBtn} onPress={handleAttach} activeOpacity={0.7}>
             <Ionicons name="attach" size={22} color={theme.mutedForeground} />
@@ -168,7 +180,7 @@ const ChatScreen = ({ navigation, route }: Props) => {
             onChangeText={setInput}
             multiline
             maxLength={500}
-            returnKeyType="send"
+            onSubmitEditing={handleSend}
             blurOnSubmit={false}
           />
           <TouchableOpacity
@@ -187,6 +199,8 @@ const ChatScreen = ({ navigation, route }: Props) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  flex: { flex: 1 },
+  list: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   profileBanner: {
     flexDirection: 'row',
@@ -208,7 +222,8 @@ const styles = StyleSheet.create({
   bannerTitle: { fontSize: FontSize.sm },
   matchBadge: { borderRadius: BorderRadius.full, paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs },
   matchBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  messageList: { padding: Spacing.lg, gap: Spacing.md },
+  messageList: { padding: Spacing.lg, gap: Spacing.md, flexGrow: 1 },
+  messageListEmpty: { justifyContent: 'center' },
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: Spacing.md },
   msgRowMe: { justifyContent: 'flex-end' },
   msgRowThem: { justifyContent: 'flex-start' },
@@ -241,8 +256,10 @@ const styles = StyleSheet.create({
   attachName: { fontSize: FontSize.xs },
   bubbleText: { fontSize: FontSize.md, lineHeight: 21 },
   timestamp: { fontSize: 11, marginTop: 4, textAlign: 'right' },
-  emptyChat: { alignItems: 'center', paddingTop: 60, paddingHorizontal: Spacing['3xl'] },
-  emptyChatText: { fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 },
+  emptyChat: { alignItems: 'center', paddingHorizontal: Spacing['3xl'], gap: Spacing.sm },
+  emptyIcon: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.sm },
+  emptyChatTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, textAlign: 'center' },
+  emptyChatText: { fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',

@@ -69,28 +69,120 @@ const TEMPLATES: Template[] = [
   },
 ];
 
-// ─── Resume preview (simplified visual representation) ───────────────────────
+// ─── Realistic resume thumbnail primitives ───────────────────────────────────
+const PAPER = '#FFFFFF';
+const INK = '#1E293B';      // dark text
+const INK_SOFT = '#CBD5E1'; // body line gray
+
+// A short coloured "section heading" bar
+const Heading = ({ color, w = 32 }: { color: string; w?: number }) => (
+  <View style={{ width: w, height: 4, borderRadius: 2, backgroundColor: color, marginBottom: 3 }} />
+);
+// A body text line
+const Line = ({ w = '100%', mb = 2.5, color = INK_SOFT }: { w?: any; mb?: number; color?: string }) => (
+  <View style={{ width: w, height: 2.5, borderRadius: 1.5, backgroundColor: color, marginBottom: mb }} />
+);
+
+// ─── Per-style realistic mini resume ─────────────────────────────────────────
 const TemplatePreview = ({ template, selected }: { template: Template; selected: boolean }) => {
   const { theme } = useTheme();
   const c = template.accentColor;
 
+  const Body = () => {
+    switch (template.style) {
+      // Classic — centered header, full divider, left sections
+      case 'classic':
+        return (
+          <View style={styles.paper}>
+            <View style={{ alignItems: 'center', marginBottom: 5 }}>
+              <View style={{ width: 52, height: 6, borderRadius: 2, backgroundColor: INK, marginBottom: 3 }} />
+              <View style={{ width: 70, height: 2.5, borderRadius: 1.5, backgroundColor: INK_SOFT }} />
+            </View>
+            <View style={{ height: 1, backgroundColor: c, marginBottom: 5 }} />
+            <Heading color={c} w={26} />
+            <Line w="92%" /><Line w="80%" /><Line w="60%" mb={5} />
+            <Heading color={c} w={30} />
+            <Line w="88%" /><Line w="70%" />
+          </View>
+        );
+      // Modern — left coloured sidebar + main column
+      case 'modern':
+        return (
+          <View style={[styles.paper, { flexDirection: 'row', padding: 0 }]}>
+            <View style={{ width: '34%', backgroundColor: `${c}22`, padding: 6, gap: 4 }}>
+              <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: c, alignSelf: 'center', marginBottom: 2 }} />
+              <Heading color={c} w={20} />
+              <Line w="90%" color={`${c}99`} /><Line w="70%" color={`${c}99`} />
+              <View style={{ height: 4 }} />
+              <Heading color={c} w={20} />
+              <Line w="85%" color={`${c}99`} /><Line w="65%" color={`${c}99`} />
+            </View>
+            <View style={{ flex: 1, padding: 6 }}>
+              <View style={{ width: 46, height: 5, borderRadius: 2, backgroundColor: INK, marginBottom: 4 }} />
+              <Heading color={c} w={26} />
+              <Line w="95%" /><Line w="82%" /><Line w="60%" mb={5} />
+              <Heading color={c} w={22} />
+              <Line w="90%" /><Line w="72%" />
+            </View>
+          </View>
+        );
+      // Executive — full-width dark header band
+      case 'executive':
+        return (
+          <View style={[styles.paper, { padding: 0 }]}>
+            <View style={{ backgroundColor: c, padding: 7, marginBottom: 5 }}>
+              <View style={{ width: 58, height: 6, borderRadius: 2, backgroundColor: '#fff', marginBottom: 3 }} />
+              <View style={{ width: 78, height: 2.5, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.7)' }} />
+            </View>
+            <View style={{ paddingHorizontal: 7 }}>
+              <Heading color={c} w={30} />
+              <Line w="94%" /><Line w="78%" mb={5} />
+              <Heading color={c} w={24} />
+              <Line w="88%" /><Line w="66%" />
+            </View>
+          </View>
+        );
+      // Technical — left tech sidebar, mono-feel main
+      case 'technical':
+        return (
+          <View style={[styles.paper, { flexDirection: 'row', padding: 0 }]}>
+            <View style={{ width: '30%', backgroundColor: c, padding: 6, gap: 3 }}>
+              <View style={{ width: 16, height: 16, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.85)', marginBottom: 2 }} />
+              <View style={{ width: 24, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(255,255,255,0.85)' }} />
+              <Line w="80%" color="rgba(255,255,255,0.6)" /><Line w="65%" color="rgba(255,255,255,0.6)" />
+              <Line w="75%" color="rgba(255,255,255,0.6)" /><Line w="55%" color="rgba(255,255,255,0.6)" />
+            </View>
+            <View style={{ flex: 1, padding: 6 }}>
+              <View style={{ width: 44, height: 5, borderRadius: 2, backgroundColor: INK, marginBottom: 4 }} />
+              <Heading color={c} w={28} />
+              <Line w="96%" /><Line w="84%" /><Line w="62%" mb={5} />
+              <Heading color={c} w={20} />
+              <Line w="90%" />
+            </View>
+          </View>
+        );
+      // Minimal — airy single column
+      default:
+        return (
+          <View style={[styles.paper, { padding: 9 }]}>
+            <View style={{ width: 50, height: 6, borderRadius: 2, backgroundColor: INK, marginBottom: 2 }} />
+            <View style={{ width: 64, height: 2.5, borderRadius: 1.5, backgroundColor: INK_SOFT, marginBottom: 8 }} />
+            <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: c, marginBottom: 3 }} />
+            <Line w="90%" /><Line w="74%" mb={8} />
+            <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: c, marginBottom: 3 }} />
+            <Line w="84%" /><Line w="66%" />
+          </View>
+        );
+    }
+  };
+
   return (
     <View style={[
       styles.previewCard,
-      { backgroundColor: theme.card, borderColor: selected ? c : theme.border },
+      { borderColor: selected ? c : theme.border },
       selected && { borderWidth: 2 },
     ]}>
-      {/* Header bar */}
-      <View style={[styles.previewHeader, { backgroundColor: c }]}>
-        <View style={styles.previewNameLine} />
-        <View style={[styles.previewSubLine, { opacity: 0.6 }]} />
-      </View>
-      {/* Content lines */}
-      <View style={styles.previewContent}>
-        {[0.9, 0.7, 0.8, 0.5, 0.75, 0.6].map((w, i) => (
-          <View key={i} style={[styles.previewLine, { width: `${w * 100}%` as any, backgroundColor: theme.muted, marginBottom: i === 2 ? 8 : 3 }]} />
-        ))}
-      </View>
+      <Body />
       {selected && (
         <View style={[styles.selectedBadge, { backgroundColor: c }]}>
           <Ionicons name="checkmark" size={10} color="#fff" />
@@ -342,7 +434,8 @@ const styles = StyleSheet.create({
   sectionSub: { fontSize: FontSize.sm, lineHeight: 20, marginBottom: Spacing.xl },
   templateGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing.xl },
   templateItem: { width: '46%' },
-  previewCard: { borderRadius: BorderRadius.lg, borderWidth: 1, overflow: 'hidden', marginBottom: Spacing.sm, height: 120, position: 'relative' },
+  previewCard: { borderRadius: BorderRadius.lg, borderWidth: 1, overflow: 'hidden', marginBottom: Spacing.sm, height: 150, position: 'relative', backgroundColor: '#FFFFFF' },
+  paper: { flex: 1, backgroundColor: '#FFFFFF', padding: 8 },
   previewHeader: { height: 32, padding: Spacing.sm, gap: 4 },
   previewNameLine: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.8)', width: '60%' },
   previewSubLine: { height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.8)', width: '40%' },

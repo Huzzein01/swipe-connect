@@ -47,6 +47,12 @@ const CoverLetterScreen = ({ navigation }: Props) => {
           candidateSkills: profile.skills,
           candidateBio: profile.bio || '',
           candidateExperience: profile.experienceYears || '',
+          contact: {
+            email: profile.email || '',
+            phone: profile.phone || '',
+            location: profile.location || '',
+            linkedin: profile.linkedinUrl || '',
+          },
         }),
       });
 

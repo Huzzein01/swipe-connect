@@ -24,6 +24,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import ResumeBuilderScreen from '../screens/ResumeBuilderScreen';
 import CoverLetterScreen from '../screens/CoverLetterScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import ConnectionProfileScreen from '../screens/ConnectionProfileScreen';
 import NotificationBell from '../components/NotificationBell';
 
 const Stack = createStackNavigator();
@@ -150,6 +151,7 @@ const AppNavigator = () => {
           <Stack.Screen name="CoverLetter"   component={CoverLetterScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Privacy"       component={PrivacyPolicyScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Chat"          component={ChatScreen}        options={{ title: 'Chat' }} />
+          <Stack.Screen name="ConnectionProfile" component={ConnectionProfileScreen} options={{ headerShown: false }} />
           <Stack.Screen
             name="Notifications"
             component={NotificationsScreen}

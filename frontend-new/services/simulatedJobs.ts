@@ -36,6 +36,7 @@ const cities = [
 const jobTypes: Job['type'][] = ['full-time', 'part-time', 'contract', 'internship'];
 
 const experienceLabels: Record<UserPreferences['experienceLevel'], string[]> = {
+  all: ['', 'Mid-Level', 'Senior'],
   entry: ['Associate', 'Junior', 'Coordinator'],
   mid: ['', 'Mid-Level', 'Product-minded'],
   senior: ['Senior', 'Lead', 'Staff'],

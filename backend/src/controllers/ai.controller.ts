@@ -37,7 +37,7 @@ export const coverLetterController = async (req: Request, res: Response, next: N
     const {
       jobTitle, company, jobDescription, tone,
       candidateName, candidateTitle, candidateSkills,
-      candidateBio, candidateExperience,
+      candidateBio, candidateExperience, contact,
     } = req.body;
 
     if (!jobTitle || !company) {
@@ -48,14 +48,17 @@ export const coverLetterController = async (req: Request, res: Response, next: N
       jobTitle, company, jobDescription || '',
       tone || 'Professional',
       candidateName || 'Candidate', candidateTitle || '',
-      candidateSkills || [], candidateBio || '', candidateExperience || ''
+      candidateSkills || [], candidateBio || '', candidateExperience || '',
+      contact || {}
     );
     res.json(result);
   } catch (error: any) {
-    // Graceful fallback
+    console.error('AI cover letter error:', error?.message);
+    // Graceful fallback when no provider key is configured
     res.json({
-      letter: `Dear Hiring Manager,\n\nI am excited to apply for the ${req.body.jobTitle} position at ${req.body.company}. Please add ANTHROPIC_API_KEY to backend .env for AI-generated letters.\n\nSincerely,\n${req.body.candidateName || 'Candidate'}`,
+      letter: `Dear Hiring Manager,\n\nI am excited about the ${req.body.jobTitle} role at ${req.body.company}. To enable full AI-generated cover letters, add a GEMINI_API_KEY (free) or DEEPSEEK_API_KEY to the backend .env.\n\nSincerely,\n${req.body.candidateName || 'Candidate'}`,
       wordCount: 30,
+      fallback: true,
     });
   }
 };
