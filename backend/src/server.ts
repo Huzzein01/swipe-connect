@@ -39,7 +39,7 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '8mb' })); // headroom for base64 resume uploads
 app.use(session({
   secret: process.env.SESSION_SECRET || 'dev-only-secret-change-in-production',
   resave: false,

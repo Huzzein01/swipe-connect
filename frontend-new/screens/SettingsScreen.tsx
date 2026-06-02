@@ -171,78 +171,6 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
           </View>
         </View>
 
-        {/* Notifications Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Notifications</Text>
-          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingRowLeft}>
-                <View style={[styles.settingIconBox, { backgroundColor: `${theme.primary}15` }]}>
-                  <Ionicons name="notifications-outline" size={20} color={theme.primary} />
-                </View>
-                <Text style={[styles.settingLabel, { color: theme.foreground }]}>
-                  Push Notifications
-                </Text>
-              </View>
-              <Switch
-                value={notifications}
-                onValueChange={setNotifications}
-                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
-                thumbColor={notifications ? theme.primary : '#f4f3f4'}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Privacy Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Privacy</Text>
-          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingRowLeft}>
-                <View style={[styles.settingIconBox, { backgroundColor: `${theme.accent}15` }]}>
-                  <Ionicons name="location-outline" size={20} color={theme.accent} />
-                </View>
-                <Text style={[styles.settingLabel, { color: theme.foreground }]}>
-                  Location Services
-                </Text>
-              </View>
-              <Switch
-                value={locationServices}
-                onValueChange={setLocationServices}
-                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
-                thumbColor={locationServices ? theme.primary : '#f4f3f4'}
-              />
-            </View>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <View style={styles.settingRow}>
-              <View style={styles.settingRowLeft}>
-                <View style={[styles.settingIconBox, { backgroundColor: `${theme.secondary}15` }]}>
-                  <Ionicons name="finger-print-outline" size={20} color={theme.secondary} />
-                </View>
-                <Text style={[styles.settingLabel, { color: theme.foreground }]}>
-                  Biometric Auth
-                </Text>
-              </View>
-              <Switch
-                value={biometricAuth}
-                onValueChange={handleBiometricToggle}
-                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
-                thumbColor={biometricAuth ? theme.primary : '#f4f3f4'}
-              />
-            </View>
-            <Text style={[styles.settingDescription, { color: theme.mutedForeground }]}>
-              {biometricAuth
-                ? 'Secure sign-in is enabled for this demo account.'
-                : Platform.OS === 'web'
-                  ? 'Enable to require a password confirmation on this browser.'
-                  : 'Enable to verify Face ID or your device biometric prompt before sign-in.'}
-            </Text>
-          </View>
-        </View>
-
         {/* AI Features Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>AI Features</Text>
@@ -332,6 +260,78 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
           </View>
         </View>
 
+        {/* Notifications Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Notifications</Text>
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowLeft}>
+                <View style={[styles.settingIconBox, { backgroundColor: `${theme.primary}15` }]}>
+                  <Ionicons name="notifications-outline" size={20} color={theme.primary} />
+                </View>
+                <Text style={[styles.settingLabel, { color: theme.foreground }]}>
+                  Push Notifications
+                </Text>
+              </View>
+              <Switch
+                value={notifications}
+                onValueChange={setNotifications}
+                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
+                thumbColor={notifications ? theme.primary : '#f4f3f4'}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Privacy Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Privacy</Text>
+          <View style={[styles.sectionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowLeft}>
+                <View style={[styles.settingIconBox, { backgroundColor: `${theme.accent}15` }]}>
+                  <Ionicons name="location-outline" size={20} color={theme.accent} />
+                </View>
+                <Text style={[styles.settingLabel, { color: theme.foreground }]}>
+                  Location Services
+                </Text>
+              </View>
+              <Switch
+                value={locationServices}
+                onValueChange={setLocationServices}
+                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
+                thumbColor={locationServices ? theme.primary : '#f4f3f4'}
+              />
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowLeft}>
+                <View style={[styles.settingIconBox, { backgroundColor: `${theme.secondary}15` }]}>
+                  <Ionicons name="finger-print-outline" size={20} color={theme.secondary} />
+                </View>
+                <Text style={[styles.settingLabel, { color: theme.foreground }]}>
+                  Biometric Auth
+                </Text>
+              </View>
+              <Switch
+                value={biometricAuth}
+                onValueChange={handleBiometricToggle}
+                trackColor={{ false: theme.muted, true: `${theme.primary}80` }}
+                thumbColor={biometricAuth ? theme.primary : '#f4f3f4'}
+              />
+            </View>
+            <Text style={[styles.settingDescription, { color: theme.mutedForeground }]}>
+              {biometricAuth
+                ? 'Secure sign-in is enabled for this demo account.'
+                : Platform.OS === 'web'
+                  ? 'Enable to require a password confirmation on this browser.'
+                  : 'Enable to verify Face ID or your device biometric prompt before sign-in.'}
+            </Text>
+          </View>
+        </View>
+
         {/* Legal */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Legal</Text>
@@ -396,7 +396,7 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
-  webScrollView: { overflowY: 'auto' as any, overflowX: 'hidden' as any },
+  webScrollView: { overflowY: 'auto', overflowX: 'hidden' } as any,
   scrollContent: { flexGrow: 1, paddingBottom: 140 },
   section: {
     paddingHorizontal: Spacing.xl,

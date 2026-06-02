@@ -15,8 +15,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserProfile } from '../contexts/UserProfileContext';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import { Resume } from '../types/job';
-import { parseResumeText, ParsedResumeAI } from '../services/aiService';
+import { parseResumeText, parseResumeFileUpload, ParsedResumeAI } from '../services/aiService';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 type ResumeUploadScreenProps = {
@@ -93,6 +95,30 @@ const readPickedFileText = async (file: PickedResumeFile) => {
   }
 };
 
+// Read the picked file as base64 (web: FileReader, native: expo-file-system)
+// so the backend can extract PDF text via pdf-parse.
+const readPickedFileBase64 = async (file: PickedResumeFile): Promise<{ base64: string; mimeType: string }> => {
+  const mimeType = (file as any).mimeType || 'application/octet-stream';
+  try {
+    if (Platform.OS === 'web' && (file as any).file && typeof FileReader !== 'undefined') {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL((file as any).file);
+      });
+      return { base64, mimeType };
+    }
+    if (file.uri) {
+      const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
+      return { base64, mimeType };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { base64: '', mimeType };
+};
+
 const extractName = (text: string, fileName: string, fallbackName?: string | null) => {
   const lines = text
     .split(/\r?\n| {3,}/)
@@ -160,7 +186,21 @@ const parseResumeFile = async (
 ): Promise<{ resume: Resume; summary: string }> => {
   const rawText = await readPickedFileText(pickedFile);
 
-  // ── Try Gemini-powered parsing first (name, skills from skills+experience, summary)
+  // ── Best path: upload the file so the backend extracts PDF text (pdf-parse)
+  // then Gemini parses it. This is the only reliable way to read PDFs.
+  try {
+    const { base64, mimeType } = await readPickedFileBase64(pickedFile);
+    if (base64) {
+      const ai = await parseResumeFileUpload(base64, mimeType, pickedFile.name);
+      if (ai && (ai.name || (ai.skills && ai.skills.length > 0))) {
+        return { resume: aiToResume(ai, pickedFile, userId, fallbackName, fallbackEmail), summary: ai.experienceSummary || '' };
+      }
+    }
+  } catch {
+    // fall through to text-based parsing
+  }
+
+  // ── Next: Gemini parsing from whatever text the browser could read (good for .txt/.md)
   if (rawText && rawText.trim().length > 60) {
     try {
       const ai = await parseResumeText(rawText);

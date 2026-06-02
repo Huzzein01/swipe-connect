@@ -14,8 +14,11 @@ import { UserProfileProvider } from './contexts/UserProfileContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import AppNavigator from './navigation/AppNavigator';
 
-const linking = {
-  prefixes: ['http://localhost:8092', 'http://127.0.0.1:8092', 'https://swipe-connect-eight.vercel.app'],
+// URL-based routing: each screen has a path, so a browser refresh stays on the
+// same screen (Discover stays Discover, Settings stays Settings) instead of
+// bouncing back to Home.
+const linking: any = {
+  prefixes: ['http://localhost:8092', 'http://127.0.0.1:8092', 'http://localhost:8081', 'https://swipe-connect-eight.vercel.app'],
   config: {
     screens: {
       Login: 'login',
@@ -60,23 +63,23 @@ const ThemedApp = () => {
 export default function App() {
   return (
     <ErrorBoundary>
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <AuthProvider>
-          <DemoProvider>
-            <NetworkProvider>
-              <NotificationProvider>
-                <PremiumProvider>
-                  <UserProfileProvider>
-                    <ThemedApp />
-                  </UserProfileProvider>
-                </PremiumProvider>
-              </NotificationProvider>
-            </NetworkProvider>
-          </DemoProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </GestureHandlerRootView>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ThemeProvider>
+          <AuthProvider>
+            <DemoProvider>
+              <NetworkProvider>
+                <NotificationProvider>
+                  <PremiumProvider>
+                    <UserProfileProvider>
+                      <ThemedApp />
+                    </UserProfileProvider>
+                  </PremiumProvider>
+                </NotificationProvider>
+              </NetworkProvider>
+            </DemoProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </GestureHandlerRootView>
     </ErrorBoundary>
   );
 }

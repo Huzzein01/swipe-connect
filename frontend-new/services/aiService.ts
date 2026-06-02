@@ -118,6 +118,16 @@ export const parseResumeText = async (resumeText: string): Promise<ParsedResumeA
   return response.data as ParsedResumeAI;
 };
 
+/** Send a base64-encoded resume file (PDF/text) for backend extraction + AI parsing. */
+export const parseResumeFileUpload = async (base64: string, mimeType: string, name: string): Promise<ParsedResumeAI> => {
+  const response = await axios.post(
+    `${API_BASE_URL}/ai/parse-resume-file`,
+    { base64, mimeType, name },
+    { timeout: 45000 }
+  );
+  return response.data as ParsedResumeAI;
+};
+
 export const tailorResumeForJob = async (job: Job, resume: Resume): Promise<TailoredResume> => {
   const resumeText = resumeToText(resume);
   const response = await axios.post(`${API_BASE_URL}/ai/tailor`, {

@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { analyzeMatch, tailorResume, generateCoverLetter, parseResumeWithAI } from '../services/ai.service';
+// pdf-parse is required lazily inside the controller to avoid its debug-mode
+// top-level file read at import time.
 
 export const analyzeMatchController = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -73,6 +75,47 @@ export const parseResumeController = async (req: Request, res: Response, next: N
     res.json(result);
   } catch (error: any) {
     console.error('AI resume parse error:', error?.message);
+    res.status(502).json({ message: 'AI resume parsing unavailable', error: error?.message });
+  }
+};
+
+/**
+ * POST /api/ai/parse-resume-file
+ * Accepts { base64, mimeType, name }. Extracts text (PDF via pdf-parse, else
+ * decodes as UTF-8), then runs the Gemini parser. This is the reliable path for
+ * PDF resumes — the browser cannot extract PDF text on its own.
+ */
+export const parseResumeFileController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { base64, mimeType, name } = req.body;
+    if (!base64 || typeof base64 !== 'string') {
+      return res.status(400).json({ message: 'base64 file content is required' });
+    }
+    const buffer = Buffer.from(base64, 'base64');
+    let text = '';
+
+    const isPdf = (mimeType && String(mimeType).includes('pdf')) || (name && String(name).toLowerCase().endsWith('.pdf'));
+    if (isPdf) {
+      try {
+        const pdfParse = require('pdf-parse');
+        const data = await pdfParse(buffer);
+        text = data?.text || '';
+      } catch (e: any) {
+        console.error('pdf-parse failed:', e?.message);
+      }
+    }
+    if (!text || text.trim().length < 30) {
+      // Fallback: treat the buffer as plain text (txt/md/docx-ish)
+      text = buffer.toString('utf8').replace(/[^\x09\x0A\x0D\x20-\x7E]/g, ' ');
+    }
+    if (!text || text.trim().length < 30) {
+      return res.status(422).json({ message: 'Could not extract readable text from this file.' });
+    }
+
+    const result = await parseResumeWithAI(text);
+    res.json(result);
+  } catch (error: any) {
+    console.error('AI resume file parse error:', error?.message);
     res.status(502).json({ message: 'AI resume parsing unavailable', error: error?.message });
   }
 };

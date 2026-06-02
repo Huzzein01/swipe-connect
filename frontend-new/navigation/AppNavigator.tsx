@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform, TouchableOpacity, View } from 'react-native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -49,7 +49,7 @@ const Login         = withBoundary(LoginScreen, 'Login');
 const Register      = withBoundary(RegisterScreen, 'Register');
 const ForgotPassword = withBoundary(ForgotPasswordScreen, 'ForgotPassword');
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const TAB_HEIGHT = Platform.OS === 'ios' ? 88 : 64;
@@ -146,18 +146,13 @@ const AppNavigator = () => {
   );
 
   const stackScreenOptions = {
-    headerStyle: {
-      backgroundColor: theme.background,
-      elevation: 0,
-      shadowOpacity: 0,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
+    headerStyle: { backgroundColor: theme.background },
+    headerShadowVisible: false,
     headerTintColor: theme.foreground,
     headerTitleStyle: { fontWeight: '700' as const, fontSize: 17 },
-    cardStyle: { backgroundColor: theme.background },
-    headerLeft: ({ canGoBack, navigation }: any) =>
-      canGoBack ? <BackButton navigation={navigation} /> : undefined,
+    contentStyle: { backgroundColor: theme.background },
+    // native-stack avoids @react-navigation/stack's CardSheet (min-height:100%)
+    // that broke scrolling on web, and renders a working back button by default.
   };
 
   return (
