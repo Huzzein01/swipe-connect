@@ -48,6 +48,9 @@ const resumeToText = (resume: Resume | null): string => {
   return lines.join('\n');
 };
 
+const gradeFromScore = (s: number) =>
+  s >= 85 ? 'A' : s >= 70 ? 'B+' : s >= 58 ? 'B' : s >= 45 ? 'C' : 'D';
+
 export const analyzeJobMatch = async (job: Job, resume: Resume | null): Promise<MatchAnalysis> => {
   try {
     const resumeText = resumeToText(resume);
@@ -58,19 +61,40 @@ export const analyzeJobMatch = async (job: Job, resume: Resume | null): Promise<
       jobDescription: job.description,
       requirements: job.requirements,
     });
-    return response.data as MatchAnalysis;
+    const result = response.data as MatchAnalysis;
+    // Sanity-check: backend returned a suspiciously low score (e.g. 0) — apply floor
+    if (typeof result.score === 'number' && result.score < 45 && !resumeText) {
+      result.score = 68;
+      result.grade = 'B';
+      result.recommendation = 'consider';
+    }
+    return result;
   } catch {
-    // Local keyword fallback when backend unavailable
-    const resumeText = resumeToText(resume).toLowerCase();
-    const matched = (job.requirements || []).filter((r) => resumeText.includes(r.toLowerCase()));
+    // Backend unreachable — local keyword fallback
+    const text = resumeToText(resume).toLowerCase();
+
+    if (!text || text.length < 20) {
+      // No resume at all → neutral placeholder
+      return {
+        score: 68,
+        grade: 'B',
+        strengths: ['Upload your resume for a real AI score'],
+        gaps: ['Resume not yet uploaded'],
+        summary: 'Add your resume to unlock personalised AI match scores.',
+        recommendation: 'consider',
+      };
+    }
+
+    const matched = (job.requirements || []).filter((r) => text.includes(r.toLowerCase()));
     const total = job.requirements?.length || 1;
-    const score = Math.max(Math.round((matched.length / total) * 100), job.matchScore || 70);
+    const raw = Math.round((matched.length / total) * 100);
+    const score = Math.max(raw, 45);
     return {
       score,
-      grade: score >= 85 ? 'A' : score >= 70 ? 'B+' : score >= 55 ? 'B' : 'C',
+      grade: gradeFromScore(score),
       strengths: matched.slice(0, 3).map((s) => `${s} matches this role`),
-      gaps: (job.requirements || []).filter((r) => !resumeText.includes(r.toLowerCase())).slice(0, 3),
-      summary: 'Match score estimated from resume keywords.',
+      gaps: (job.requirements || []).filter((r) => !text.includes(r.toLowerCase())).slice(0, 3),
+      summary: 'Score estimated from resume keywords (backend offline).',
       recommendation: score >= 70 ? 'apply' : 'consider',
     };
   }

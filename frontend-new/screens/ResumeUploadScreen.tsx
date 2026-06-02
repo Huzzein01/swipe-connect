@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDemo } from '../contexts/DemoContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useUserProfile } from '../contexts/UserProfileContext';
 import * as DocumentPicker from 'expo-document-picker';
 import { Resume } from '../types/job';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
@@ -175,12 +176,42 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { createSampleResume, resume: savedResume, saveResume } = useDemo();
+  const { profile, updateProfile } = useUserProfile();
   const [isLoading, setIsLoading] = useState(false);
   const [resume, setResume] = useState<Resume | null>(savedResume);
 
   useEffect(() => {
     setResume(savedResume);
   }, [savedResume]);
+
+  // Merge parsed resume fields into UserProfile — only fills empty fields,
+  // always merges skills (union, no duplicates).
+  const syncResumeToProfile = async (parsed: Resume) => {
+    const d = parsed.parsedData;
+    const patch: Record<string, any> = {};
+
+    if (!profile.displayName && d.name) patch.displayName = d.name;
+    if (!profile.email && d.email) patch.email = d.email;
+    if (!profile.phone && d.phone) patch.phone = d.phone;
+    if (!profile.location && d.location?.city) {
+      patch.location = `${d.location.city}, ${d.location.state || ''}`.trim().replace(/,$/, '');
+    }
+    if (!profile.title && d.experience?.[0]?.title) patch.title = d.experience[0].title;
+    if (!profile.currentCompany && d.experience?.[0]?.company) patch.currentCompany = d.experience[0].company;
+
+    // Always merge skills — union of existing + newly extracted
+    if (d.skills?.length) {
+      const existing = new Set(profile.skills.map((s) => s.toLowerCase()));
+      const newSkills = d.skills.filter((s) => !existing.has(s.toLowerCase()));
+      if (newSkills.length > 0) {
+        patch.skills = [...profile.skills, ...newSkills];
+      }
+    }
+
+    if (Object.keys(patch).length > 0) {
+      await updateProfile(patch);
+    }
+  };
 
   const pickDocument = async () => {
     try {
@@ -206,8 +237,12 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
         );
         setResume(parsedResume);
         await saveResume(parsedResume);
+        await syncResumeToProfile(parsedResume);
         setIsLoading(false);
-        Alert.alert('Resume parsed', `${pickedFile.name} was attached and parsed into your profile.`);
+        Alert.alert(
+          'Resume synced',
+          `${pickedFile.name} was parsed and your profile has been updated with extracted skills and experience.`
+        );
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to attach and parse resume. Please try again.');
@@ -219,9 +254,10 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
     if (!resume) return;
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 600));
       await saveResume(resume);
-      Alert.alert('Success', 'Resume saved successfully!');
+      await syncResumeToProfile(resume);
+      Alert.alert('Saved', 'Resume saved and profile updated.');
       navigation.goBack();
     } catch (error) {
       Alert.alert('Error', 'Failed to save resume.');
@@ -237,7 +273,8 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
       const sampleResume = createSampleResume(user?.uid || 'preview-user');
       setResume(sampleResume);
       await saveResume(sampleResume);
-      Alert.alert('Sample resume ready', 'Skills and experience were added to the matching engine.');
+      await syncResumeToProfile(sampleResume);
+      Alert.alert('Sample resume ready', 'Skills and experience were synced to your profile and the matching engine.');
     } finally {
       setIsLoading(false);
     }
@@ -352,7 +389,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
 
               {/* Skills */}
               <View style={styles.resultField}>
-                <Text style={[styles.resultLabel, { color: theme.mutedForeground }]}>Skills</Text>
+                <Text style={[styles.resultLabel, { color: theme.mutedForeground }]}>Skills extracted</Text>
                 <View style={styles.skillsRow}>
                   {resume.parsedData.skills.map((skill, index) => (
                     <View key={index} style={[styles.skillTag, { backgroundColor: `${theme.primary}15` }]}>
@@ -360,6 +397,14 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
                     </View>
                   ))}
                 </View>
+              </View>
+
+              {/* Profile sync banner */}
+              <View style={[styles.syncBanner, { backgroundColor: `${theme.success}10`, borderColor: `${theme.success}30` }]}>
+                <Ionicons name="sync-outline" size={16} color={theme.success} />
+                <Text style={[styles.syncText, { color: theme.success }]}>
+                  Skills, title, location and experience will sync to your profile when you save.
+                </Text>
               </View>
 
               {/* Save Button */}
@@ -488,6 +533,16 @@ const styles = StyleSheet.create({
   checklist: { gap: Spacing.md, marginTop: Spacing.lg },
   checkItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   checkText: { fontSize: FontSize.sm },
+  syncBanner: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  syncText: { flex: 1, fontSize: FontSize.sm, lineHeight: 19 },
 });
 
 export default ResumeUploadScreen;

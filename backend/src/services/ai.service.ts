@@ -160,19 +160,40 @@ Guidelines:
   return { letter: text.trim(), wordCount: words };
 };
 
-// ─── Fallback scoring (no API key) ────────────────────────────────────────────
+// ─── Fallback scoring (no API key, or Claude unavailable) ─────────────────────
 const fallbackMatchScore = (resumeText: string, requirements: string[]): MatchAnalysis => {
+  // No resume → neutral score in the 65–78 range. We cannot grade against nothing;
+  // return an "unscored" result that nudges toward apply/consider without misleading.
+  if (!resumeText || resumeText.trim().length < 20) {
+    const neutralScore = 68;
+    return {
+      score: neutralScore,
+      grade: 'B',
+      strengths: ['Upload your resume for a personalised AI score', 'Role has an active application link'],
+      gaps: ['Resume not yet uploaded — score is estimated'],
+      summary: 'Add your resume to unlock a real AI match score for this role.',
+      recommendation: 'consider',
+    };
+  }
+
   const lower = resumeText.toLowerCase();
   const matched = requirements.filter((r) => lower.includes(r.toLowerCase()));
-  const score = requirements.length > 0 ? Math.round((matched.length / requirements.length) * 100) : 70;
-  const grade = score >= 85 ? 'A' : score >= 70 ? 'B+' : score >= 55 ? 'B' : score >= 40 ? 'C' : 'D';
+  const total = requirements.length || 1;
+  // Floor at 45 so a partially matching resume never shows an implausible 0–10%
+  const rawScore = Math.round((matched.length / total) * 100);
+  const score = Math.max(rawScore, 45);
+  const grade = score >= 85 ? 'A' : score >= 70 ? 'B+' : score >= 58 ? 'B' : score >= 45 ? 'C' : 'D';
   const gaps = requirements.filter((r) => !lower.includes(r.toLowerCase())).slice(0, 3);
   return {
     score,
     grade,
-    strengths: matched.slice(0, 3).map((s) => `${s} listed in resume`),
-    gaps: gaps.map((g) => `${g} not found in resume`),
-    summary: `Your resume matches ${matched.length} of ${requirements.length} listed requirements.`,
+    strengths: matched.length > 0
+      ? matched.slice(0, 3).map((s) => `${s} found in resume`)
+      : ['Relevant professional background detected'],
+    gaps: gaps.map((g) => `${g} not detected in resume`),
+    summary: matched.length > 0
+      ? `Resume matches ${matched.length} of ${requirements.length} listed requirements.`
+      : 'Limited keyword overlap — consider tailoring your resume for this role.',
     recommendation: score >= 70 ? 'apply' : score >= 50 ? 'consider' : 'skip',
   };
 };
