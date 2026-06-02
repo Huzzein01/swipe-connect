@@ -325,7 +325,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, height: preview ? CARD_HEIGHT : undefined, minHeight: CARD_HEIGHT }]}>
       <View style={styles.cardHeader}>
         <View style={[styles.logoMark, { backgroundColor: `${theme.primary}18` }]}>
-          <Text style={[styles.logoText, { color: theme.primary }]}>{job.company.charAt(0)}</Text>
+          <Text style={[styles.logoText, { color: theme.primary }]}>{(job.company || '?').charAt(0).toUpperCase()}</Text>
         </View>
         <View style={styles.cardMeta}>
           <Text style={[styles.companyName, { color: theme.mutedForeground }]} numberOfLines={1}>{job.company}</Text>
@@ -412,7 +412,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
             )}
           </View>
           <View style={styles.tagRow}>
-            {job.requirements.slice(0, 4).map((s) => (
+            {(job.requirements || []).slice(0, 4).map((s) => (
               <View key={s} style={[styles.tag, { backgroundColor: `${theme.secondary}14` }]}>
                 <Text style={[styles.tagText, { color: theme.secondary }]}>{s}</Text>
               </View>
@@ -491,27 +491,9 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   // ─── UI ───────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.kicker, { color: theme.mutedForeground }]}>
-            {mode === 'jobs' ? 'Job applications' : 'Professional networking'}
-          </Text>
-          <Text style={[styles.headerTitle, { color: theme.foreground }]}>
-            {mode === 'jobs' ? 'Swipe roles' : 'Swipe people'}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.filterBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-          onPress={() => navigation.navigate('JobFilters')}
-          activeOpacity={0.75}
-        >
-          <Ionicons name="options-outline" size={20} color={theme.foreground} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Mode toggle */}
-      <View style={[styles.toggle, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      {/* Mode toggle + filter button (captions removed) */}
+      <View style={styles.toggleRow}>
+        <View style={[styles.toggle, styles.toggleFlex, { backgroundColor: theme.card, borderColor: theme.border }]}>
         {(['jobs', 'networking'] as DeckMode[]).map((item) => {
           const active = mode === item;
           return (
@@ -532,6 +514,14 @@ const JobSwipeScreen = ({ navigation }: Props) => {
             </TouchableOpacity>
           );
         })}
+        </View>
+        <TouchableOpacity
+          style={[styles.filterBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={() => navigation.navigate('JobFilters')}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="options-outline" size={20} color={theme.foreground} />
+        </TouchableOpacity>
       </View>
 
       {/* Minimal action counts — no deck counter */}
@@ -824,8 +814,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, paddingBottom: Spacing.sm },
   kicker: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, marginBottom: 2 },
   headerTitle: { fontSize: FontSize['2xl'], fontWeight: FontWeight.extrabold },
-  filterBtn: { width: 44, height: 44, borderRadius: BorderRadius.lg, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  filterBtn: { width: 44, height: 44, borderRadius: BorderRadius.lg, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg, paddingBottom: Spacing.sm },
   toggle: { flexDirection: 'row', borderWidth: 1, borderRadius: BorderRadius.full, padding: 4, marginHorizontal: Spacing.xl, marginBottom: Spacing.sm },
+  toggleFlex: { flex: 1, marginHorizontal: 0, marginBottom: 0 },
   toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: BorderRadius.full, paddingVertical: Spacing.sm, gap: Spacing.xs },
   toggleText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
   statsRow: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.xl, marginBottom: Spacing.sm },

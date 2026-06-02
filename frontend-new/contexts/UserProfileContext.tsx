@@ -3,8 +3,9 @@
  * Single profile that serves both job applications and professional networking.
  * Persisted to AsyncStorage. Photo stored as base64 or URL string.
  */
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from './AuthContext';
 
 export type WorkStyle = 'Remote' | 'Hybrid' | 'On-site' | 'Flexible';
 export type OpenTo = 'Mentoring' | 'Co-founding' | 'Freelance' | 'Advisory' | 'Side project' | 'Full-time roles' | 'Networking';
@@ -96,10 +97,16 @@ const calcCompletion = (p: UserProfile): number => {
 
 export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [hydrated, setHydrated] = useState(false);
+  const { user } = useAuth();
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const syncedFor = useRef<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (raw) try { setProfile({ ...DEFAULT_PROFILE, ...JSON.parse(raw) }); } catch { /* ignore */ }
+      setHydrated(true);
     });
   }, []);
 
@@ -108,8 +115,33 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   };
 
-  const updateProfile = async (patch: Partial<UserProfile>) => save({ ...profile, ...patch });
+  const updateProfile = async (patch: Partial<UserProfile>) => save({ ...profileRef.current, ...patch });
   const resetProfile = async () => save(DEFAULT_PROFILE);
+
+  // ── Sync LinkedIn sign-in data into the profile (fills empty fields only) ──
+  useEffect(() => {
+    if (!hydrated || !user || user.provider !== 'linkedin') return;
+    if (syncedFor.current === user.uid) return; // sync once per LinkedIn user
+    syncedFor.current = user.uid;
+
+    const p = profileRef.current;
+    const li = user.linkedin || {};
+    const patch: Partial<UserProfile> = {};
+
+    if (!p.displayName && user.displayName) patch.displayName = user.displayName;
+    if (!p.email && user.email) patch.email = user.email;
+    // Photo: always adopt the LinkedIn avatar if the profile has none
+    if (!p.photoUri && user.photoURL) patch.photoUri = user.photoURL;
+    if (!p.title && li.headline) patch.title = li.headline;
+    if (!p.bio && li.bio) patch.bio = li.bio;
+    if (!p.location && li.location) patch.location = li.location;
+    if (!p.currentCompany && li.company) patch.currentCompany = li.company;
+    if (!p.linkedinUrl && li.linkedinUrl) patch.linkedinUrl = li.linkedinUrl;
+
+    if (Object.keys(patch).length > 0) {
+      save({ ...p, ...patch });
+    }
+  }, [hydrated, user?.uid, user?.provider]);
 
   return (
     <Ctx.Provider value={{ profile, updateProfile, resetProfile, profileCompletion: calcCompletion(profile) }}>

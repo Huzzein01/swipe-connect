@@ -13,6 +13,28 @@ type Props = { navigation: any };
 const TONES = ['Professional', 'Enthusiastic', 'Concise', 'Storytelling'] as const;
 type Tone = typeof TONES[number];
 
+// Module-level so the TextInput keeps focus across keystrokes (defining this
+// inside the screen would remount the input on every render → focus loss).
+const Field = ({ theme, label, value, onChange, placeholder, multiline }: {
+  theme: any; label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean;
+}) => (
+  <View style={{ marginBottom: Spacing.lg }}>
+    <Text style={[styles.label, { color: theme.mutedForeground }]}>{label}</Text>
+    <TextInput
+      style={[
+        styles.input,
+        { borderColor: theme.border, backgroundColor: theme.background, color: theme.foreground },
+        multiline && { minHeight: 100, textAlignVertical: 'top', paddingTop: Spacing.md },
+      ]}
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      placeholderTextColor={theme.mutedForeground}
+      multiline={multiline}
+    />
+  </View>
+);
+
 const CoverLetterScreen = ({ navigation }: Props) => {
   const { theme } = useTheme();
   const { profile } = useUserProfile();
@@ -98,26 +120,6 @@ ${profile.linkedinUrl || ''}`.trim();
     } catch { /* ignore */ }
   };
 
-  const Field = ({ label, value, onChange, placeholder, multiline }: {
-    label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean;
-  }) => (
-    <View style={{ marginBottom: Spacing.lg }}>
-      <Text style={[styles.label, { color: theme.mutedForeground }]}>{label}</Text>
-      <TextInput
-        style={[
-          styles.input,
-          { borderColor: theme.border, backgroundColor: theme.background, color: theme.foreground },
-          multiline && { minHeight: 100, textAlignVertical: 'top', paddingTop: Spacing.md },
-        ]}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={theme.mutedForeground}
-        multiline={multiline}
-      />
-    </View>
-  );
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
@@ -147,9 +149,9 @@ ${profile.linkedinUrl || ''}`.trim();
             </Text>
           </View>
 
-          <Field label="Job title *" value={jobTitle} onChange={setJobTitle} placeholder="Senior Product Manager" />
-          <Field label="Company *" value={company} onChange={setCompany} placeholder="Acme Corp" />
-          <Field label="Job description (optional but recommended)" value={jobDesc} onChange={setJobDesc} placeholder="Paste the job description here for a more tailored letter…" multiline />
+          <Field theme={theme} label="Job title *" value={jobTitle} onChange={setJobTitle} placeholder="Senior Product Manager" />
+          <Field theme={theme} label="Company *" value={company} onChange={setCompany} placeholder="Acme Corp" />
+          <Field theme={theme} label="Job description (optional but recommended)" value={jobDesc} onChange={setJobDesc} placeholder="Paste the job description here for a more tailored letter…" multiline />
 
           {/* Tone selector */}
           <Text style={[styles.label, { color: theme.mutedForeground, marginBottom: Spacing.sm }]}>Tone</Text>

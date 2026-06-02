@@ -26,6 +26,28 @@ import CoverLetterScreen from '../screens/CoverLetterScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import ConnectionProfileScreen from '../screens/ConnectionProfileScreen';
 import NotificationBell from '../components/NotificationBell';
+import { withBoundary } from '../components/ErrorBoundary';
+
+// Each screen is wrapped in an error boundary so a crash in one screen shows a
+// recoverable "Try again / Go back" panel in the content area — the tab bar and
+// header (rendered by the navigators) stay alive, so navigation never freezes.
+const Home          = withBoundary(HomeScreen, 'Home');
+const Discover      = withBoundary(JobSwipeScreen, 'Discover');
+const Network       = withBoundary(NetworkScreen, 'Network');
+const Profile       = withBoundary(ProfileScreen, 'Profile');
+const Settings      = withBoundary(SettingsScreen, 'Settings');
+const Help          = withBoundary(HelpScreen, 'Help');
+const JobFilters    = withBoundary(JobFiltersScreen, 'JobFilters');
+const ResumeUpload  = withBoundary(ResumeUploadScreen, 'ResumeUpload');
+const ResumeBuilder = withBoundary(ResumeBuilderScreen, 'ResumeBuilder');
+const CoverLetter   = withBoundary(CoverLetterScreen, 'CoverLetter');
+const Privacy       = withBoundary(PrivacyPolicyScreen, 'Privacy');
+const Chat          = withBoundary(ChatScreen, 'Chat');
+const ConnectionProfile = withBoundary(ConnectionProfileScreen, 'ConnectionProfile');
+const Notifications = withBoundary(NotificationsScreen, 'Notifications');
+const Login         = withBoundary(LoginScreen, 'Login');
+const Register      = withBoundary(RegisterScreen, 'Register');
+const ForgotPassword = withBoundary(ForgotPasswordScreen, 'ForgotPassword');
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -91,7 +113,7 @@ const MainTabs = () => {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        component={Home}
         options={({ navigation }) => ({
           title: 'Home',
           headerRight: () => (
@@ -101,9 +123,9 @@ const MainTabs = () => {
           ),
         })}
       />
-      <Tab.Screen name="Discover" component={JobSwipeScreen} options={{ headerShown: false, title: 'Discover' }} />
-      <Tab.Screen name="Network"  component={NetworkScreen}  options={{ headerShown: false, title: 'Network' }} />
-      <Tab.Screen name="Profile"  component={ProfileScreen}  options={{ title: 'Profile' }} />
+      <Tab.Screen name="Discover" component={Discover} options={{ headerShown: false, title: 'Discover' }} />
+      <Tab.Screen name="Network"  component={Network}  options={{ headerShown: false, title: 'Network' }} />
+      <Tab.Screen name="Profile"  component={Profile}  options={{ title: 'Profile' }} />
     </Tab.Navigator>
   );
 };
@@ -143,18 +165,18 @@ const AppNavigator = () => {
       {user ? (
         <>
           <Stack.Screen name="Main"          component={MainTabs}          options={{ headerShown: false }} />
-          <Stack.Screen name="Settings"      component={SettingsScreen}    options={{ title: 'Settings' }} />
-          <Stack.Screen name="Help"          component={HelpScreen}        options={{ title: 'Help & Support' }} />
-          <Stack.Screen name="JobFilters"    component={JobFiltersScreen}  options={{ title: 'Job Preferences' }} />
-          <Stack.Screen name="ResumeUpload"  component={ResumeUploadScreen} options={{ title: 'Resume' }} />
-          <Stack.Screen name="ResumeBuilder" component={ResumeBuilderScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="CoverLetter"   component={CoverLetterScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Privacy"       component={PrivacyPolicyScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Chat"          component={ChatScreen}        options={{ title: 'Chat' }} />
-          <Stack.Screen name="ConnectionProfile" component={ConnectionProfileScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Settings"      component={Settings}    options={{ title: 'Settings' }} />
+          <Stack.Screen name="Help"          component={Help}        options={{ title: 'Help & Support' }} />
+          <Stack.Screen name="JobFilters"    component={JobFilters}  options={{ title: 'Job Preferences' }} />
+          <Stack.Screen name="ResumeUpload"  component={ResumeUpload} options={{ title: 'Resume' }} />
+          <Stack.Screen name="ResumeBuilder" component={ResumeBuilder} options={{ headerShown: false }} />
+          <Stack.Screen name="CoverLetter"   component={CoverLetter} options={{ headerShown: false }} />
+          <Stack.Screen name="Privacy"       component={Privacy} options={{ headerShown: false }} />
+          <Stack.Screen name="Chat"          component={Chat}        options={{ title: 'Chat' }} />
+          <Stack.Screen name="ConnectionProfile" component={ConnectionProfile} options={{ headerShown: false }} />
           <Stack.Screen
             name="Notifications"
-            component={NotificationsScreen}
+            component={Notifications}
             options={({ navigation }) => ({
               headerShown: true,
               title: 'Notifications',
@@ -162,13 +184,13 @@ const AppNavigator = () => {
             })}
           />
           {/* Legacy route aliases */}
-          <Stack.Screen name="Jobs"          component={JobSwipeScreen}    options={{ headerShown: false }} />
+          <Stack.Screen name="Jobs"          component={Discover}    options={{ headerShown: false }} />
         </>
       ) : (
         <>
-          <Stack.Screen name="Login"         component={LoginScreen}       options={{ headerShown: false }} />
-          <Stack.Screen name="Register"      component={RegisterScreen}    options={{ headerShown: false }} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Login"         component={Login}       options={{ headerShown: false }} />
+          <Stack.Screen name="Register"      component={Register}    options={{ headerShown: false }} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPassword} options={{ headerShown: false }} />
         </>
       )}
     </Stack.Navigator>

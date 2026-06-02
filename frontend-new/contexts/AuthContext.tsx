@@ -15,6 +15,15 @@ import { jobService } from '../services/jobService';
 
 type AuthUser = Pick<FirebaseUser, 'uid' | 'email' | 'displayName' | 'photoURL'> & {
   authToken?: string;
+  provider?: 'email' | 'linkedin' | 'preview';
+  // Optional LinkedIn-sourced fields used to sync the in-app profile
+  linkedin?: {
+    headline?: string;
+    bio?: string;
+    location?: string;
+    linkedinUrl?: string;
+    company?: string;
+  };
 };
 
 export type SignInRecord = {
@@ -150,8 +159,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: profile._id || profile.id,
         email: profile.email,
         displayName: profile.displayName || profile.name,
-        photoURL: profile.photoURL || profile.profilePicture || null,
+        photoURL: profile.photoURL || profile.profilePicture || profile.picture || null,
         authToken: token,
+        provider: 'linkedin',
+        linkedin: {
+          headline: profile.headline || profile.localizedHeadline || '',
+          bio: profile.summary || profile.bio || '',
+          location: profile.location?.name || profile.location || profile.locale || '',
+          linkedinUrl: profile.publicProfileUrl || profile.profileUrl || profile.linkedinUrl || '',
+          company: profile.company || profile.positions?.[0]?.companyName || '',
+        },
       });
       await recordSignIn('linkedin', profile.email);
     };
