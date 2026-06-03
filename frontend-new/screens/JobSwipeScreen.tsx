@@ -175,67 +175,73 @@ const JobSwipeScreen = ({ navigation }: Props) => {
     translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
   }, []);
 
+  // Fire-and-forget application submission — does NOT touch reviewedJobIds or
+  // isSubmitting; those are managed by the swipe handler. This lets the deck
+  // show the next card ~300 ms after the swipe while the API runs in the background.
   const applyToJobAndNotify = useCallback(async (job: Job) => {
-    setIsSubmitting(true);
+    setAppliedJobIds((ids) => [...new Set([...ids, job.id])]);
     try {
       await jobService.recordSwipe(job.id, 'like');
       const app = await jobService.applyToJob(job, {
         id: user?.uid, name: user?.displayName, email: user?.email, phone: resume?.parsedData.phone,
       }, resume);
-      setReviewedJobIds((ids) => [...new Set([...ids, job.id])]);
-      setAppliedJobIds((ids) => [...new Set([...ids, job.id])]);
       const emailSent = Boolean(app.email?.sent);
-      setStatusMessage(emailSent ? `Applied to ${job.company}. Confirmation email sent ✉️` : `Applied to ${job.company}.`);
-      // Fire in-app notification
+      setStatusMessage(emailSent ? `Applied to ${job.company}. Confirmation sent ✉️` : `Applied to ${job.company}.`);
       addNotification({
         type: 'application',
         title: `Application submitted — ${job.title}`,
         body: `You applied to ${job.title} at ${job.company}. ${emailSent ? 'A confirmation email has been sent to you.' : 'Application queued.'}`,
-        meta: {
-          jobId: job.id,
-          jobTitle: job.title,
-          company: job.company,
-          applicationUrl: job.applicationUrl,
-          emailSent,
-        },
+        meta: { jobId: job.id, jobTitle: job.title, company: job.company, applicationUrl: job.applicationUrl, emailSent },
       });
     } catch {
-      setReviewedJobIds((ids) => [...new Set([...ids, job.id])]);
-      setAppliedJobIds((ids) => [...new Set([...ids, job.id])]);
-      setStatusMessage(`Applied locally to ${job.company}.`);
+      setStatusMessage(`Application queued for ${job.company}.`);
       addNotification({
         type: 'application',
         title: `Application queued — ${job.title}`,
         body: `Application to ${job.title} at ${job.company} was queued locally.`,
         meta: { jobId: job.id, jobTitle: job.title, company: job.company, emailSent: false },
       });
-    } finally {
-      setIsSubmitting(false);
     }
   }, [user, resume, addNotification]);
 
-  const handleJobSwipe = useCallback(async (direction: 'left' | 'right') => {
+  const handleJobSwipe = useCallback((direction: 'left' | 'right') => {
     if (!currentJob || isSubmitting) return;
+    const job = currentJob;
+    // Block duplicate gestures for a short window (animation duration)
+    setIsSubmitting(true);
+
+    // Release the deck ~300 ms after the swipe starts — enough for the spring
+    // animation to complete — so the next card appears without waiting for AI/API.
+    const releaseAfterAnimation = () =>
+      setTimeout(() => {
+        setReviewedJobIds((ids) => [...new Set([...ids, job.id])]);
+        setIsSubmitting(false);
+      }, 320);
+
     if (direction === 'right') {
-      // If AI Tailor is on and user has a resume, show tailor modal first
       if (aiTailorEnabled && resume) {
+        // Non-blocking background tailoring — deck releases immediately after animation.
         setIsTailoring(true);
-        try {
-          const tailored = await tailorResumeForJob(currentJob, resume);
-          setIsTailoring(false);
-          setTailorModal({ job: currentJob, result: tailored });
-        } catch {
-          setIsTailoring(false);
-          // Fallback: apply normally
-          await applyToJobAndNotify(currentJob);
-        }
+        setStatusMessage(`✨ Tailoring your resume for ${job.company}…`);
+        releaseAfterAnimation();
+        tailorResumeForJob(job, resume)
+          .then((tailored) => {
+            setIsTailoring(false);
+            setTailorModal({ job, result: tailored });
+            setStatusMessage(`Resume tailored for ${job.company} — review & apply`);
+          })
+          .catch(() => {
+            setIsTailoring(false);
+            applyToJobAndNotify(job);
+          });
       } else {
-        await applyToJobAndNotify(currentJob);
+        releaseAfterAnimation();
+        applyToJobAndNotify(job);
       }
     } else {
-      await jobService.recordSwipe(currentJob.id, 'dislike').catch(() => {});
-      setReviewedJobIds((ids) => [...new Set([...ids, currentJob.id])]);
-      setStatusMessage(`${currentJob.company} skipped.`);
+      jobService.recordSwipe(job.id, 'dislike').catch(() => {});
+      setStatusMessage(`${job.company} skipped.`);
+      releaseAfterAnimation();
     }
   }, [currentJob, isSubmitting, aiTailorEnabled, resume, applyToJobAndNotify]);
 
@@ -566,9 +572,15 @@ const JobSwipeScreen = ({ navigation }: Props) => {
         </TouchableOpacity>
       </View>
 
-      {/* Minimal action counts — no deck counter */}
-      {(appliedJobIds.length > 0 || savedJobIds.length > 0) && mode === 'jobs' && (
+      {/* Action counts + live tailoring indicator */}
+      {(appliedJobIds.length > 0 || savedJobIds.length > 0 || isTailoring) && mode === 'jobs' && (
         <View style={styles.statsRow}>
+          {isTailoring && (
+            <View style={[styles.statPill, { backgroundColor: `${theme.primary}12` }]}>
+              <ActivityIndicator size="small" color={theme.primary} style={{ transform: [{ scale: 0.65 }], marginRight: -2 }} />
+              <Text style={[styles.statValue, { color: theme.primary }]}>Tailoring…</Text>
+            </View>
+          )}
           {appliedJobIds.length > 0 && (
             <View style={[styles.statPill, { backgroundColor: `${theme.success}12` }]}>
               <Ionicons name="send-outline" size={13} color={theme.success} />
@@ -594,17 +606,15 @@ const JobSwipeScreen = ({ navigation }: Props) => {
 
       {/* Deck */}
       <View style={styles.deck}>
-        {(isFetchingJobs && mode === 'jobs') || isSubmitting ? (
+        {isFetchingJobs && mode === 'jobs' ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={theme.primary} />
             <Text style={[styles.loadingText, { color: theme.mutedForeground }]}>
-              {isFetchingJobs ? 'Fetching live jobs…' : 'Submitting application…'}
+              Fetching live jobs…
             </Text>
-            {isFetchingJobs && (
-              <Text style={[styles.loadingSubText, { color: theme.mutedForeground }]}>
-                Scanning Greenhouse, Ashby, Lever and more
-              </Text>
-            )}
+            <Text style={[styles.loadingSubText, { color: theme.mutedForeground }]}>
+              Scanning Greenhouse, Ashby, Lever and more
+            </Text>
           </View>
         ) : currentCard ? (
           <View style={styles.stage}>
@@ -726,20 +736,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
         </View>
       </Modal>
 
-      {/* AI Tailoring loading overlay */}
-      <Modal visible={isTailoring} transparent animationType="fade">
-        <View style={styles.tailorOverlay}>
-          <View style={[styles.tailorBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={[styles.tailorTitle, { color: theme.foreground }]}>AI is tailoring your resume</Text>
-            <Text style={[styles.tailorSub, { color: theme.mutedForeground }]}>
-              Matching your experience to this role…
-            </Text>
-          </View>
-        </View>
-      </Modal>
-
-      {/* AI Tailor review modal */}
+      {/* AI Tailor review modal — appears when background tailoring completes */}
       <Modal visible={Boolean(tailorModal)} animationType="slide" transparent onRequestClose={() => setTailorModal(null)}>
         <View style={styles.modalBg}>
           <View style={[styles.modalSheet, { backgroundColor: theme.card, borderColor: theme.border }]}>

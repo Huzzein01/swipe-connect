@@ -15,6 +15,29 @@ const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Strip common prompt-injection patterns from user-supplied text before it is
+ * embedded in any AI generation prompt. Removes null-bytes, control chars,
+ * and lines that open with known injection openers. Collapses whitespace floods.
+ *
+ * This must be called on EVERY piece of user content (resume text, bio,
+ * experience summaries) before it reaches the LLM.
+ */
+const sanitizeInput = (text: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  // 1. Strip null bytes and non-printable control chars (preserve \t \n \r)
+  let clean = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ');
+  // 2. Blank out lines that start with common injection openers
+  const injectRe =
+    /^\s*(ignore\s+(all\s+)?(previous|above|prior)|disregard\s+all|forget\s+(all|the)\s+|override\s+(all\s+)?instructions?|<\/?system>|<\/?prompt>|\[INST\]|###\s*(system|instruction|prompt)\b|you\s+are\s+now\s+|act\s+as\s+(a\s+|an\s+)?|new\s+(task|instruction)\s*:)/i;
+  clean = clean
+    .split('\n')
+    .map((line) => (injectRe.test(line) ? '' : line))
+    .join('\n');
+  // 3. Collapse whitespace flooding (3+ blank lines → 2)
+  return clean.replace(/\n{3,}/g, '\n\n').trim();
+};
+
 // Gemini free tier intermittently returns 503 / "high demand". Retry a few times.
 const isTransient = (err: any): boolean => {
   const status = err?.response?.status;
@@ -148,6 +171,7 @@ export const analyzeMatch = async (
   jobDescription: string,
   requirements: string[]
 ): Promise<MatchAnalysis> => {
+  const safeResume = sanitizeInput(resumeText);
   const prompt = `You are a professional recruiter and ATS expert. Analyze this resume against the job posting and return a JSON object only — no markdown, no explanation, just raw JSON.
 
 JOB: ${jobTitle} at ${company}
@@ -156,7 +180,7 @@ JOB DESCRIPTION:
 ${jobDescription.slice(0, 1500)}
 
 RESUME:
-${resumeText.slice(0, 2500)}
+${safeResume.slice(0, 2500)}
 
 Return this exact JSON shape:
 {
@@ -187,6 +211,7 @@ export const tailorResume = async (
   jobDescription: string,
   requirements: string[]
 ): Promise<TailoredResume> => {
+  const safeResume = sanitizeInput(resumeText);
   const prompt = `You are an expert resume writer and career coach. Tailor this resume to match the job posting as closely as possible — target 90%+ alignment. Preserve the candidate's real experience but reframe, reorder, and strengthen language to match the job's keywords, skills, and tone.
 
 JOB: ${jobTitle} at ${company}
@@ -195,7 +220,7 @@ JOB DESCRIPTION:
 ${jobDescription.slice(0, 1500)}
 
 RESUME:
-${resumeText.slice(0, 3500)}
+${safeResume.slice(0, 3500)}
 
 Return this exact JSON shape (no markdown, raw JSON only):
 {
@@ -238,6 +263,12 @@ export const generateCoverLetter = async (
   candidateExperience: string,
   contact?: { email?: string; phone?: string; location?: string; linkedin?: string }
 ): Promise<CoverLetterResult> => {
+  // Sanitize all user-supplied fields before they enter the prompt
+  const safeBio = sanitizeInput(candidateBio);
+  const safeExperience = sanitizeInput(candidateExperience);
+  const safeName = sanitizeInput(candidateName);
+  const safeTitle = sanitizeInput(candidateTitle);
+
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const toneKey = (tone || 'professional').toLowerCase();
   const toneNote = TONE_GUIDE[toneKey] || TONE_GUIDE.professional;
@@ -253,11 +284,11 @@ export const generateCoverLetter = async (
   const prompt = `Write a complete, ready-to-send cover letter. Return ONLY the letter text — no markdown, no commentary, no placeholders like [Your Name].
 
 === CANDIDATE ===
-Name: ${candidateName}
-Current title: ${candidateTitle || 'Professional'}
-Experience: ${candidateExperience || 'several years'}
+Name: ${safeName}
+Current title: ${safeTitle || 'Professional'}
+Experience: ${safeExperience || 'several years'}
 Top skills: ${candidateSkills.slice(0, 8).join(', ') || 'relevant skills'}
-Background: ${candidateBio || 'experienced professional'}
+Background: ${safeBio || 'experienced professional'}
 Contact line to use as the header: ${contactBlock}
 
 === ROLE ===
@@ -277,7 +308,7 @@ Then 4 substantial paragraphs:
   3. Why this company/team specifically — reference something concrete about the role.
   4. Forward-looking close + a clear call to action for an interview.
 Then: Sincerely,
-Then: ${candidateName}
+Then: ${safeName}
 
 === STYLE & LENGTH (strict) ===
 Tone: ${toneNote}
@@ -317,7 +348,8 @@ export type ATSResult = {
 
 /** ATS resume scanner — scores a resume for applicant-tracking-system readiness */
 export const scanResumeATS = async (resumeText: string, targetRole?: string): Promise<ATSResult> => {
-  const prompt = `You are an ATS (Applicant Tracking System) expert and professional resume reviewer. Analyze the resume below for ATS-readiness and overall quality. ${targetRole ? `The candidate is targeting "${targetRole}" roles — judge keyword alignment against that.` : ''} Return ONLY raw JSON (no markdown).
+  const safeText = sanitizeInput(resumeText);
+  const prompt = `You are an ATS (Applicant Tracking System) expert and professional resume reviewer. Analyze the resume below for ATS-readiness and overall quality. ${targetRole ? `The candidate is targeting "${sanitizeInput(targetRole)}" roles — judge keyword alignment against that.` : ''} Return ONLY raw JSON (no markdown).
 
 Score these 5 categories (each out of the max shown), then an overall 0–100 score:
 - "Formatting & Parseability" (max 20): clean structure, standard section headings, no tables/columns/graphics that break ATS parsing.
@@ -327,7 +359,7 @@ Score these 5 categories (each out of the max shown), then an overall 0–100 sc
 - "Contact & Completeness" (max 15): name, email, phone, location/links, complete history.
 
 RESUME:
-${resumeText.slice(0, 4500)}
+${safeText.slice(0, 4500)}
 
 Return exactly this JSON shape:
 {
@@ -377,6 +409,7 @@ const objArr = (v: any): any[] => (Array.isArray(v) ? v.filter((x) => x && typeo
 /** AI resume parsing — extracts EVERY section: contact, summary, skills, experience,
  *  projects, volunteer work, education, certifications. */
 export const parseResumeWithAI = async (resumeText: string): Promise<ParsedResumeAI> => {
+  const safeText = sanitizeInput(resumeText);
   const prompt = `You are an accurate resume parser. Read the resume text and extract ALL sections. Return ONLY raw JSON (no markdown, no commentary). Be faithful to the resume — never invent employers, schools, dates, or facts. Use "" or [] for anything not present.
 
 Extraction rules:
@@ -393,7 +426,7 @@ Extraction rules:
 - experienceSummary: a sharp 2–3 sentence third-person professional summary you write (used if the candidate has no Summary section).
 
 RESUME TEXT:
-${resumeText.slice(0, 6000)}
+${safeText.slice(0, 6000)}
 
 Return exactly this JSON shape:
 {
