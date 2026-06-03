@@ -119,6 +119,36 @@ export const jobService = {
     }
   },
 
+  /**
+   * Fetch a deeper batch of jobs for continuous swiping. Runs the FULL ATS scan
+   * (all registered companies) plus the public feed, so the deck keeps growing.
+   * Caller passes the IDs/keys it already has to avoid duplicates.
+   */
+  getMoreJobs: async (preferences?: UserPreferences): Promise<Job[]> => {
+    try {
+      const query = encodeURIComponent(queryFromPreferences(preferences));
+      const remote = preferences?.remote ? '&remote=true' : '';
+      const [scanResult, feedResult] = await Promise.allSettled([
+        requestJson<{ jobs: Job[] }>(`/jobs/scan?q=${query}&limit=250${remote}`), // full scan = all companies
+        requestJson<{ jobs: Job[] }>(`/jobs?q=${query}&limit=80`),
+      ]);
+      const scanJobs = scanResult.status === 'fulfilled' ? (scanResult.value.jobs ?? []) : [];
+      const feedJobs = feedResult.status === 'fulfilled' ? (feedResult.value.jobs ?? []) : [];
+      const seen = new Set<string>();
+      const merged: Job[] = [];
+      for (const job of [...scanJobs, ...feedJobs]) {
+        const key = `${job.company?.toLowerCase()}-${job.title?.toLowerCase()}`;
+        if (!seen.has(key) && job.title && job.applicationUrl) {
+          seen.add(key);
+          merged.push(job);
+        }
+      }
+      return merged.sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+    } catch {
+      return [];
+    }
+  },
+
   saveJob: async (jobId: string) => {
     try {
       await requestJson(`/jobs/${encodeURIComponent(jobId)}/save`, {

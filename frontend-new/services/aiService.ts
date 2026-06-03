@@ -128,6 +128,24 @@ export const parseResumeFileUpload = async (base64: string, mimeType: string, na
   return response.data as ParsedResumeAI;
 };
 
+export type ATSResult = {
+  score: number;
+  rating: string;
+  breakdown: Array<{ category: string; score: number; max: number; note: string }>;
+  strengths: string[];
+  improvements: string[];
+  missingKeywords: string[];
+  summary: string;
+};
+
+/** ATS-scan a resume. Pass either { resumeText } or a base64 file. */
+export const atsScanResume = async (
+  payload: { resumeText?: string; base64?: string; mimeType?: string; name?: string; targetRole?: string }
+): Promise<ATSResult> => {
+  const response = await axios.post(`${API_BASE_URL}/ai/ats-scan`, payload, { timeout: 45000 });
+  return response.data as ATSResult;
+};
+
 export const tailorResumeForJob = async (job: Job, resume: Resume): Promise<TailoredResume> => {
   const resumeText = resumeToText(resume);
   const response = await axios.post(`${API_BASE_URL}/ai/tailor`, {

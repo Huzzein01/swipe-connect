@@ -22,6 +22,7 @@ import NetworkScreen from '../screens/MatchesScreen';
 import ChatScreen from '../screens/ChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ResumeBuilderScreen from '../screens/ResumeBuilderScreen';
+import ATSScannerScreen from '../screens/ATSScannerScreen';
 import CoverLetterScreen from '../screens/CoverLetterScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import ConnectionProfileScreen from '../screens/ConnectionProfileScreen';
@@ -40,6 +41,7 @@ const Help          = withBoundary(HelpScreen, 'Help');
 const JobFilters    = withBoundary(JobFiltersScreen, 'JobFilters');
 const ResumeUpload  = withBoundary(ResumeUploadScreen, 'ResumeUpload');
 const ResumeBuilder = withBoundary(ResumeBuilderScreen, 'ResumeBuilder');
+const ATSScanner    = withBoundary(ATSScannerScreen, 'ATSScanner');
 const CoverLetter   = withBoundary(CoverLetterScreen, 'CoverLetter');
 const Privacy       = withBoundary(PrivacyPolicyScreen, 'Privacy');
 const Chat          = withBoundary(ChatScreen, 'Chat');
@@ -165,6 +167,7 @@ const AppNavigator = () => {
           <Stack.Screen name="JobFilters"    component={JobFilters}  options={{ title: 'Job Preferences' }} />
           <Stack.Screen name="ResumeUpload"  component={ResumeUpload} options={{ title: 'Resume' }} />
           <Stack.Screen name="ResumeBuilder" component={ResumeBuilder} options={{ headerShown: false }} />
+          <Stack.Screen name="ATSScanner"    component={ATSScanner} options={{ headerShown: false }} />
           <Stack.Screen name="CoverLetter"   component={CoverLetter} options={{ headerShown: false }} />
           <Stack.Screen name="Privacy"       component={Privacy} options={{ headerShown: false }} />
           <Stack.Screen name="Chat"          component={Chat}        options={{ title: 'Chat' }} />

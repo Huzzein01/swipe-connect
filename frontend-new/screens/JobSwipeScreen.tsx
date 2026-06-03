@@ -76,19 +76,55 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   const translateY = useSharedValue(0);
   const isDragging = useSharedValue(0);
 
-  // ─── Data ─────────────────────────────────────────────────────────────────
+  // ─── Data: hashmap-backed deck with continuous top-up ─────────────────────
+  // jobsMapRef dedupes every job ever fetched (company+title key → Job), so the
+  // deck only grows and never shows the same role twice.
+  const jobsMapRef = React.useRef<Map<string, Job>>(new Map());
+  const toppingUpRef = React.useRef(false);
+  const TOPUP_THRESHOLD = 6;
+
+  const keyOf = (j: Job) => `${j.company?.toLowerCase()}-${j.title?.toLowerCase()}`;
+
+  const mergeIntoDeck = useCallback((incoming: Job[]) => {
+    const map = jobsMapRef.current;
+    let added = 0;
+    for (const job of incoming) {
+      const k = keyOf(job);
+      if (job.title && job.applicationUrl && !map.has(k)) { map.set(k, job); added++; }
+    }
+    if (added > 0) {
+      setJobs(Array.from(map.values()).sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0)));
+    }
+    return added;
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       setIsFetchingJobs(true);
+      jobsMapRef.current = new Map();
       const fetched = await jobService.getJobs(preferences);
-      if (mounted) { setJobs(fetched); setReviewedJobIds([]); setIsFetchingJobs(false); }
+      if (!mounted) return;
+      setReviewedJobIds([]);
+      mergeIntoDeck(fetched);
+      setIsFetchingJobs(false);
     };
     load();
     return () => { mounted = false; };
-  }, [preferences]);
+  }, [preferences, mergeIntoDeck]);
 
   const remainingJobs = useMemo(() => jobs.filter((j) => !reviewedJobIds.includes(j.id)), [jobs, reviewedJobIds]);
+
+  // Continuously top up the deck when the user nears the end.
+  useEffect(() => {
+    if (mode !== 'jobs' || isFetchingJobs) return;
+    if (remainingJobs.length > TOPUP_THRESHOLD || toppingUpRef.current) return;
+    toppingUpRef.current = true;
+    jobService.getMoreJobs(preferences)
+      .then((more) => { mergeIntoDeck(more); })
+      .catch(() => {})
+      .finally(() => { toppingUpRef.current = false; });
+  }, [remainingJobs.length, mode, isFetchingJobs, preferences, mergeIntoDeck]);
   const currentJob = remainingJobs[0] || null;
   const nextJob = remainingJobs[1] || null;
 

@@ -263,7 +263,7 @@ Contact line to use as the header: ${contactBlock}
 === ROLE ===
 Position: ${jobTitle}
 Company: ${company}
-${jobDescription ? `Job description:\n${jobDescription.slice(0, 900)}` : ''}
+${jobDescription ? `Job description (tailor the letter to THIS — reference its specific responsibilities, requirements, and language):\n${jobDescription.slice(0, 1600)}` : ''}
 
 === FORMAT (follow exactly) ===
 Line 1: ${contactBlock}
@@ -271,21 +271,88 @@ Line 2: (blank)
 Line 3: ${today}
 Line 4: (blank)
 Line 5: Dear Hiring Manager,
-Then 3 short paragraphs:
-  1. A specific hook — why this role at ${company} fits the candidate (no "I am writing to apply").
-  2. Concrete evidence: tie 2–3 of the candidate's skills/experience to the job's needs.
-  3. Forward-looking close + a call to action for an interview.
+Then 4 substantial paragraphs:
+  1. A specific hook naming the ${jobTitle} role at ${company} and what draws the candidate to it (no "I am writing to apply").
+  2. Map the candidate's concrete experience/skills to 2–3 specific requirements or responsibilities pulled FROM THE JOB DESCRIPTION above.
+  3. Why this company/team specifically — reference something concrete about the role.
+  4. Forward-looking close + a clear call to action for an interview.
 Then: Sincerely,
 Then: ${candidateName}
 
-=== STYLE ===
+=== STYLE & LENGTH (strict) ===
 Tone: ${toneNote}
-- Under 320 words. No clichés ("passionate", "team player", "hit the ground running").
-- Specific, human, and tailored to ${company}. Never invent fake metrics or employers.`;
+- LENGTH: the letter body MUST be at least 250 words (aim 280–380). Add specific, relevant detail from the job description and the candidate's background — never pad with clichés.
+- No clichés ("passionate", "team player", "hit the ground running").
+- Specific, human, and tailored to ${company} and the job description. Never invent fake metrics or employers.`;
 
-  const text = await callLLM(prompt, 1024);
-  const clean = text.trim();
-  return { letter: clean, wordCount: clean.split(/\s+/).length };
+  const generate = async () => (await callLLM(prompt, 1400)).trim();
+
+  let clean = await generate();
+  let wordCount = clean.split(/\s+/).filter(Boolean).length;
+
+  // Enforce the 250-word minimum: if short, ask the model to expand once.
+  if (wordCount < 250) {
+    try {
+      const expandPrompt = `The cover letter below is only ${wordCount} words. Rewrite it to be at least 250 words (aim 300) by adding specific, relevant detail tying the candidate's experience to the job description — no clichés, no invented facts. Keep the same header, date, greeting, and sign-off. Return ONLY the letter.\n\n${clean}`;
+      const expanded = (await callLLM(expandPrompt, 1400)).trim();
+      if (expanded.split(/\s+/).filter(Boolean).length > wordCount) {
+        clean = expanded;
+        wordCount = clean.split(/\s+/).filter(Boolean).length;
+      }
+    } catch { /* keep first draft */ }
+  }
+
+  return { letter: clean, wordCount };
+};
+
+export type ATSResult = {
+  score: number;                 // 0–100 overall ATS-readiness
+  rating: string;                // Excellent / Strong / Fair / Needs work
+  breakdown: Array<{ category: string; score: number; max: number; note: string }>;
+  strengths: string[];
+  improvements: string[];        // concrete, actionable suggestions
+  missingKeywords: string[];     // keywords/skills to consider adding
+  summary: string;
+};
+
+/** ATS resume scanner — scores a resume for applicant-tracking-system readiness */
+export const scanResumeATS = async (resumeText: string, targetRole?: string): Promise<ATSResult> => {
+  const prompt = `You are an ATS (Applicant Tracking System) expert and professional resume reviewer. Analyze the resume below for ATS-readiness and overall quality. ${targetRole ? `The candidate is targeting "${targetRole}" roles — judge keyword alignment against that.` : ''} Return ONLY raw JSON (no markdown).
+
+Score these 5 categories (each out of the max shown), then an overall 0–100 score:
+- "Formatting & Parseability" (max 20): clean structure, standard section headings, no tables/columns/graphics that break ATS parsing.
+- "Keyword Optimization" (max 25): presence of role-relevant skills, tools, and terminology.
+- "Impact & Achievements" (max 20): quantified results and strong action verbs vs. vague duties.
+- "Clarity & Structure" (max 20): logical sections (summary, experience, skills, education), readable, consistent.
+- "Contact & Completeness" (max 15): name, email, phone, location/links, complete history.
+
+RESUME:
+${resumeText.slice(0, 4500)}
+
+Return exactly this JSON shape:
+{
+  "score": <integer 0-100>,
+  "rating": "<Excellent|Strong|Fair|Needs work>",
+  "breakdown": [{ "category": "", "score": <int>, "max": <int>, "note": "<one-line note>" }],
+  "strengths": ["<up to 4 concrete strengths>"],
+  "improvements": ["<up to 6 specific, actionable fixes — be concrete, e.g. 'Quantify the X achievement with a metric'>"],
+  "missingKeywords": ["<up to 8 skills/keywords worth adding if relevant>"],
+  "summary": "<2 sentence overall assessment>"
+}`;
+
+  const raw = await callLLM(prompt, 1800);
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('AI did not return valid JSON for ATS scan');
+  const r = JSON.parse(jsonMatch[0]) as ATSResult;
+  return {
+    score: Math.max(0, Math.min(100, Number(r.score) || 0)),
+    rating: String(r.rating || ''),
+    breakdown: Array.isArray(r.breakdown) ? r.breakdown : [],
+    strengths: Array.isArray(r.strengths) ? r.strengths.map(String) : [],
+    improvements: Array.isArray(r.improvements) ? r.improvements.map(String) : [],
+    missingKeywords: Array.isArray(r.missingKeywords) ? r.missingKeywords.map(String) : [],
+    summary: String(r.summary || ''),
+  };
 };
 
 export type ParsedResumeAI = {

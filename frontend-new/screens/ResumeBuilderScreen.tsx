@@ -326,6 +326,22 @@ ${data.certifications ? 'CERTIFICATIONS\n' + data.certifications : ''}
       {/* Step: Template */}
       {step === 'template' && (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
+          {/* Already have a resume? Go straight to the ATS scanner */}
+          <TouchableOpacity
+            style={[styles.atsEntry, { backgroundColor: `${theme.primary}10`, borderColor: `${theme.primary}30` }]}
+            onPress={() => navigation.navigate('ATSScanner')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.atsEntryIcon, { backgroundColor: theme.primary }]}>
+              <Ionicons name="scan-outline" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.atsEntryTitle, { color: theme.foreground }]}>Already have a resume?</Text>
+              <Text style={[styles.atsEntrySub, { color: theme.mutedForeground }]}>Attach it and get an instant ATS score + improvement tips — skip building.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.primary} />
+          </TouchableOpacity>
+
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>ATS-Approved Templates</Text>
           <Text style={[styles.sectionSub, { color: theme.mutedForeground }]}>All templates are optimised for applicant tracking systems used by modern companies.</Text>
 
@@ -432,6 +448,10 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, padding: Spacing.xl, paddingBottom: 140 },
   sectionTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.extrabold, marginBottom: Spacing.sm },
   sectionSub: { fontSize: FontSize.sm, lineHeight: 20, marginBottom: Spacing.xl },
+  atsEntry: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1, borderRadius: BorderRadius.xl, padding: Spacing.lg, marginBottom: Spacing.xl },
+  atsEntryIcon: { width: 44, height: 44, borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center' },
+  atsEntryTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginBottom: 2 },
+  atsEntrySub: { fontSize: FontSize.sm, lineHeight: 18 },
   templateGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing.xl },
   templateItem: { width: '46%' },
   previewCard: { borderRadius: BorderRadius.lg, borderWidth: 1, overflow: 'hidden', marginBottom: Spacing.sm, height: 150, position: 'relative', backgroundColor: '#FFFFFF' },

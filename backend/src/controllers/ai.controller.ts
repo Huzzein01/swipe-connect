@@ -1,7 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
-import { analyzeMatch, tailorResume, generateCoverLetter, parseResumeWithAI } from '../services/ai.service';
+import { analyzeMatch, tailorResume, generateCoverLetter, parseResumeWithAI, scanResumeATS } from '../services/ai.service';
 // pdf-parse is required lazily inside the controller to avoid its debug-mode
 // top-level file read at import time.
+
+/** Extract plain text from { base64, mimeType, name } or pass through { resumeText }. */
+const extractResumeText = async (body: any): Promise<string> => {
+  if (body?.resumeText && String(body.resumeText).trim().length >= 30) {
+    return String(body.resumeText);
+  }
+  if (body?.base64 && typeof body.base64 === 'string') {
+    const buffer = Buffer.from(body.base64, 'base64');
+    const isPdf = (body.mimeType && String(body.mimeType).includes('pdf')) ||
+      (body.name && String(body.name).toLowerCase().endsWith('.pdf'));
+    if (isPdf) {
+      try {
+        const pdfParse = require('pdf-parse');
+        const data = await pdfParse(buffer);
+        if (data?.text && data.text.trim().length >= 30) return data.text;
+      } catch (e: any) {
+        console.error('pdf-parse failed:', e?.message);
+      }
+    }
+    return buffer.toString('utf8').replace(/[^\x09\x0A\x0D\x20-\x7E]/g, ' ');
+  }
+  return '';
+};
 
 export const analyzeMatchController = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -117,6 +140,21 @@ export const parseResumeFileController = async (req: Request, res: Response, nex
   } catch (error: any) {
     console.error('AI resume file parse error:', error?.message);
     res.status(502).json({ message: 'AI resume parsing unavailable', error: error?.message });
+  }
+};
+
+/** POST /api/ai/ats-scan — accepts { resumeText } or { base64, mimeType, name }, plus optional { targetRole } */
+export const atsScanController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const text = await extractResumeText(req.body);
+    if (!text || text.trim().length < 30) {
+      return res.status(422).json({ message: 'Could not read enough text from the resume to scan.' });
+    }
+    const result = await scanResumeATS(text, req.body?.targetRole);
+    res.json(result);
+  } catch (error: any) {
+    console.error('ATS scan error:', error?.message);
+    res.status(502).json({ message: 'ATS scan unavailable', error: error?.message });
   }
 };
 
