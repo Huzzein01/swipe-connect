@@ -43,6 +43,12 @@ export type UserProfile = {
   projectIdeas: string[];
   openTo: OpenTo[];
   startupInterests: string[];
+
+  // ── From resume (synced; editable)
+  projects: string[];       // "Project name — description"
+  volunteer: string[];      // "Role at Org — description"
+  certifications: string[];
+  experienceHighlights: string[]; // "Title at Company — description"
 };
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -69,6 +75,10 @@ const DEFAULT_PROFILE: UserProfile = {
   projectIdeas: [],
   openTo: ['Full-time roles', 'Networking'],
   startupInterests: [],
+  projects: [],
+  volunteer: [],
+  certifications: [],
+  experienceHighlights: [],
 };
 
 type UserProfileContextType = {
@@ -90,6 +100,7 @@ const STRING_FIELDS: (keyof UserProfile)[] = [
 ];
 const ARRAY_FIELDS: (keyof UserProfile)[] = [
   'skills', 'industries', 'targetRoles', 'workStyle', 'projectIdeas', 'openTo', 'startupInterests',
+  'projects', 'volunteer', 'certifications', 'experienceHighlights',
 ];
 
 const toStr = (v: any): string => {

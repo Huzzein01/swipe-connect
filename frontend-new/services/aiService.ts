@@ -34,17 +34,31 @@ const resumeToText = (resume: Resume | null): string => {
   const lines: string[] = [];
   if (d.name) lines.push(`Name: ${d.name}`);
   if (d.email) lines.push(`Email: ${d.email}`);
+  if ((d as any).summary) lines.push(`Summary: ${(d as any).summary}`);
   if (d.skills?.length) lines.push(`Skills: ${d.skills.join(', ')}`);
   if (d.experience?.length) {
+    lines.push('Experience:');
     d.experience.forEach((e) => {
-      lines.push(`${e.title} at ${e.company} (${e.startDate}–${e.endDate}): ${e.description}`);
+      lines.push(`- ${e.title} at ${e.company} (${e.startDate}–${e.endDate || 'Present'}): ${e.description}`);
     });
+  }
+  const projects = (d as any).projects as { name: string; description: string }[] | undefined;
+  if (projects?.length) {
+    lines.push('Projects:');
+    projects.forEach((p) => lines.push(`- ${p.name}: ${p.description}`));
+  }
+  const volunteer = (d as any).volunteer as { role: string; organization: string; description: string }[] | undefined;
+  if (volunteer?.length) {
+    lines.push('Volunteer:');
+    volunteer.forEach((v) => lines.push(`- ${v.role} at ${v.organization}: ${v.description}`));
   }
   if (d.education?.length) {
+    lines.push('Education:');
     d.education.forEach((e) => {
-      lines.push(`${e.degree} in ${e.field} — ${e.institution} (${e.graduationDate})`);
+      lines.push(`- ${e.degree} in ${e.field} — ${e.institution} (${e.graduationDate})`);
     });
   }
+  if (d.certifications?.length) lines.push(`Certifications: ${d.certifications.join(', ')}`);
   return lines.join('\n');
 };
 
@@ -106,10 +120,14 @@ export type ParsedResumeAI = {
   phone: string;
   location: string;
   title: string;
+  summary: string;
   skills: string[];
   experienceSummary: string;
   experience: Array<{ title: string; company: string; startDate: string; endDate: string; description: string }>;
+  projects: Array<{ name: string; description: string }>;
+  volunteer: Array<{ role: string; organization: string; description: string }>;
   education: Array<{ degree: string; field: string; institution: string; graduationDate: string }>;
+  certifications: string[];
 };
 
 /** Send raw resume text to the backend for AI parsing (Gemini). Throws on failure. */

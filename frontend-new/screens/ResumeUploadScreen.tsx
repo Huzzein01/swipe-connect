@@ -18,7 +18,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import { Resume } from '../types/job';
-import { parseResumeText, parseResumeFileUpload, ParsedResumeAI } from '../services/aiService';
+import { parseResumeText, parseResumeFileUpload, atsScanResume, ParsedResumeAI, ATSResult } from '../services/aiService';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 type ResumeUploadScreenProps = {
@@ -172,7 +172,10 @@ const aiToResume = (
           }))
         : [{ title: ai.title || 'Professional', company: '', location: ai.location || '', startDate: '', description: ai.experienceSummary || '' }],
       skills: ai.skills && ai.skills.length > 0 ? ai.skills : [],
-      certifications: [],
+      certifications: ai.certifications || [],
+      summary: ai.summary || ai.experienceSummary || '',
+      projects: ai.projects || [],
+      volunteer: ai.volunteer || [],
     },
     lastUpdated: new Date().toISOString(),
   };
@@ -278,6 +281,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('Parsing Resume with AI...');
   const [resume, setResume] = useState<Resume | null>(savedResume);
+  const [atsResult, setAtsResult] = useState<ATSResult | null>(null);
 
   useEffect(() => {
     setResume(savedResume);
@@ -337,7 +341,8 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
     if ((!profile.experienceYears || profile.experienceYears === '3-5 years') && inferredExperience) {
       patch.experienceYears = inferredExperience;
     }
-    const resumeSummary = summary || latest?.description || '';
+    // Bio ← the resume's own Summary/Objective section (preferred), else AI summary
+    const resumeSummary = (d as any).summary || summary || latest?.description || '';
     if (!profile.bio && resumeSummary) patch.bio = resumeSummary;
 
     // Always merge skills — union of existing + newly extracted
@@ -357,6 +362,25 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
 
     if (skills.length && profile.projectIdeas.length === 0) {
       patch.projectIdeas = [`Build a product using ${skills.slice(0, 2).join(' and ')}`];
+    }
+
+    // ── Sync the rest of the resume (projects, volunteer, certifications, experience)
+    const projects = ((d as any).projects || []) as { name: string; description: string }[];
+    if (projects.length && profile.projects.length === 0) {
+      patch.projects = projects.map((p) => (p.description ? `${p.name} — ${p.description}` : p.name)).filter(Boolean);
+    }
+    const volunteer = ((d as any).volunteer || []) as { role: string; organization: string; description: string }[];
+    if (volunteer.length && profile.volunteer.length === 0) {
+      patch.volunteer = volunteer.map((v) => `${v.role}${v.organization ? ' at ' + v.organization : ''}${v.description ? ' — ' + v.description : ''}`).filter(Boolean);
+    }
+    if (d.certifications?.length && profile.certifications.length === 0) {
+      patch.certifications = mergeUnique(profile.certifications, d.certifications);
+    }
+    if (d.experience?.length && profile.experienceHighlights.length === 0) {
+      patch.experienceHighlights = d.experience
+        .map((e) => `${e.title}${e.company ? ' at ' + e.company : ''}${e.description ? ' — ' + e.description : ''}`)
+        .filter(Boolean)
+        .slice(0, 8);
     }
 
     if (Object.keys(patch).length > 0) {
@@ -390,15 +414,31 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
         setResume(parsedResume);
         await saveResume(parsedResume);
         await syncResumeToProfile(parsedResume, summary);
-        Alert.alert(
-          'Resume synced',
-          `${pickedFile.name} was parsed with AI. Your name, skills, and professional summary were added to your profile.`
-        );
+
+        // Auto-run an ATS scan on the freshly uploaded resume.
+        setLoadingLabel('Running ATS scan...');
+        try {
+          const { base64, mimeType } = await readPickedFileBase64(pickedFile);
+          const targetRole = parsedResume.parsedData.experience?.[0]?.title || profile.title || '';
+          const ats = base64
+            ? await atsScanResume({ base64, mimeType, name: pickedFile.name, targetRole })
+            : null;
+          setAtsResult(ats);
+          setIsLoading(false);
+          Alert.alert(
+            'Resume synced & scanned',
+            ats
+              ? `${pickedFile.name} was parsed and your profile updated. ATS score: ${ats.score}/100 (${ats.rating}). Tap "View full ATS report" for ${ats.improvements.length} suggestions.`
+              : `${pickedFile.name} was parsed and your profile updated with your skills, experience, and projects.`
+          );
+        } catch {
+          setIsLoading(false);
+          Alert.alert('Resume synced', `${pickedFile.name} was parsed and your profile updated.`);
+        }
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to attach and parse resume. Please try again.');
-    } finally {
       setIsLoading(false);
+      Alert.alert('Error', 'Failed to attach and parse resume. Please try again.');
     }
   };
 
@@ -564,9 +604,36 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
               <View style={[styles.syncBanner, { backgroundColor: `${theme.success}10`, borderColor: `${theme.success}30` }]}>
                 <Ionicons name="sync-outline" size={16} color={theme.success} />
                 <Text style={[styles.syncText, { color: theme.success }]}>
-                  Skills, title, location and experience will sync to your profile when you save.
+                  Name, contact, summary, skills, experience, projects &amp; volunteer work synced to your profile.
                 </Text>
               </View>
+
+              {/* Auto ATS scan result */}
+              {atsResult && (
+                <TouchableOpacity
+                  style={[styles.atsCard, {
+                    backgroundColor: theme.card,
+                    borderColor: atsResult.score >= 80 ? `${theme.success}40` : atsResult.score >= 60 ? `${theme.warning}40` : `${theme.destructive}40`,
+                  }]}
+                  onPress={() => navigation.navigate('ATSScanner', { result: atsResult })}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.atsScoreBadge, {
+                    borderColor: atsResult.score >= 80 ? theme.success : atsResult.score >= 60 ? theme.warning : theme.destructive,
+                  }]}>
+                    <Text style={[styles.atsScoreNum, {
+                      color: atsResult.score >= 80 ? theme.success : atsResult.score >= 60 ? theme.warning : theme.destructive,
+                    }]}>{atsResult.score}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.atsTitle, { color: theme.foreground }]}>ATS score: {atsResult.rating}</Text>
+                    <Text style={[styles.atsSub, { color: theme.mutedForeground }]} numberOfLines={2}>
+                      {atsResult.improvements.length} suggestions · tap to view full report
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+                </TouchableOpacity>
+              )}
 
               {/* Save Button */}
               <TouchableOpacity
@@ -695,6 +762,11 @@ const styles = StyleSheet.create({
   checklist: { gap: Spacing.md, marginTop: Spacing.lg },
   checkItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   checkText: { fontSize: FontSize.sm },
+  atsCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, borderWidth: 1, borderRadius: BorderRadius.xl, padding: Spacing.lg, marginBottom: Spacing.lg },
+  atsScoreBadge: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  atsScoreNum: { fontSize: FontSize.lg, fontWeight: FontWeight.extrabold },
+  atsTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, marginBottom: 2 },
+  atsSub: { fontSize: FontSize.sm, lineHeight: 18 },
   syncBanner: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,

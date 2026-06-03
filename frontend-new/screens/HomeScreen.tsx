@@ -145,6 +145,14 @@ const HomeScreen = ({ navigation }: Props) => {
               badge: resume ? '✓' : null,
             },
             {
+              icon: 'scan-outline' as const,
+              color: theme.accent,
+              label: 'ATS Resume Scanner',
+              sub: 'Score your resume & get fixes',
+              screen: 'ATSScanner',
+              badge: null,
+            },
+            {
               icon: 'options-outline' as const,
               color: theme.secondary,
               label: 'Job preferences',

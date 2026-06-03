@@ -153,10 +153,10 @@ export const analyzeMatch = async (
 JOB: ${jobTitle} at ${company}
 REQUIREMENTS: ${requirements.join(', ')}
 JOB DESCRIPTION:
-${jobDescription.slice(0, 1200)}
+${jobDescription.slice(0, 1500)}
 
 RESUME:
-${resumeText.slice(0, 1500)}
+${resumeText.slice(0, 2500)}
 
 Return this exact JSON shape:
 {
@@ -192,10 +192,10 @@ export const tailorResume = async (
 JOB: ${jobTitle} at ${company}
 KEY REQUIREMENTS: ${requirements.join(', ')}
 JOB DESCRIPTION:
-${jobDescription.slice(0, 1200)}
+${jobDescription.slice(0, 1500)}
 
 RESUME:
-${resumeText.slice(0, 2000)}
+${resumeText.slice(0, 3500)}
 
 Return this exact JSON shape (no markdown, raw JSON only):
 {
@@ -361,54 +361,70 @@ export type ParsedResumeAI = {
   phone: string;
   location: string;
   title: string;
+  summary: string;               // the candidate's own Summary/Objective section → bio
   skills: string[];
-  experienceSummary: string;
+  experienceSummary: string;     // AI-written 2–3 sentence overview
   experience: Array<{ title: string; company: string; startDate: string; endDate: string; description: string }>;
+  projects: Array<{ name: string; description: string }>;
+  volunteer: Array<{ role: string; organization: string; description: string }>;
   education: Array<{ degree: string; field: string; institution: string; graduationDate: string }>;
+  certifications: string[];
 };
 
-/** AI resume parsing — extracts name, skills (from skills + experience), and a summary */
-export const parseResumeWithAI = async (resumeText: string): Promise<ParsedResumeAI> => {
-  const prompt = `You are a resume parser. Extract structured data from the resume text below and return ONLY raw JSON (no markdown, no commentary).
+const strArr = (v: any): string[] => (Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean) : []);
+const objArr = (v: any): any[] => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : []);
 
-Rules:
-- name: the candidate's full name (from the top of the resume).
-- skills: a DEDUPLICATED union of (a) skills explicitly listed in any Skills section AND (b) skills, tools, technologies, languages, frameworks, and methodologies clearly implied by the Experience descriptions. Aim for 8–15 concrete skills. Title-case them.
-- experienceSummary: a sharp 2–3 sentence professional summary of the candidate's overall experience and strengths, written in third person.
-- title: the candidate's most recent/current job title.
-- Use "" for any string you cannot find. Never invent employers, schools, or dates.
+/** AI resume parsing — extracts EVERY section: contact, summary, skills, experience,
+ *  projects, volunteer work, education, certifications. */
+export const parseResumeWithAI = async (resumeText: string): Promise<ParsedResumeAI> => {
+  const prompt = `You are an accurate resume parser. Read the resume text and extract ALL sections. Return ONLY raw JSON (no markdown, no commentary). Be faithful to the resume — never invent employers, schools, dates, or facts. Use "" or [] for anything not present.
+
+Extraction rules:
+- name: the candidate's full name (top of the resume).
+- email / phone / location: from the contact line/header. location = city, state (and country if present).
+- title: the candidate's current/most-recent job title or target role.
+- summary: the candidate's OWN "Summary" / "Objective" / "Profile" section text, verbatim or lightly cleaned. If there is none, leave "".
+- skills: a DEDUPLICATED union of (a) skills explicitly listed AND (b) skills, tools, technologies, languages, frameworks, and methodologies clearly demonstrated in the Experience and Projects sections. 8–20 concrete skills, Title-cased.
+- experience: every job — title, company, startDate, endDate, and a concise description of the bullet points.
+- projects: every project — name and a one–two sentence description (include tech used).
+- volunteer: every volunteer/community role — role, organization, description.
+- education: every entry — degree, field, institution, graduationDate.
+- certifications: list any certifications/licenses.
+- experienceSummary: a sharp 2–3 sentence third-person professional summary you write (used if the candidate has no Summary section).
 
 RESUME TEXT:
-${resumeText.slice(0, 4500)}
+${resumeText.slice(0, 6000)}
 
 Return exactly this JSON shape:
 {
-  "name": "",
-  "email": "",
-  "phone": "",
-  "location": "",
-  "title": "",
+  "name": "", "email": "", "phone": "", "location": "", "title": "", "summary": "",
   "skills": [],
   "experienceSummary": "",
   "experience": [{ "title": "", "company": "", "startDate": "", "endDate": "", "description": "" }],
-  "education": [{ "degree": "", "field": "", "institution": "", "graduationDate": "" }]
+  "projects": [{ "name": "", "description": "" }],
+  "volunteer": [{ "role": "", "organization": "", "description": "" }],
+  "education": [{ "degree": "", "field": "", "institution": "", "graduationDate": "" }],
+  "certifications": []
 }`;
 
-  const raw = await callLLM(prompt, 1500);
+  const raw = await callLLM(prompt, 2200);
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('AI did not return valid JSON for resume');
-  const parsed = JSON.parse(jsonMatch[0]) as ParsedResumeAI;
-  // Defensive normalization so the frontend never receives non-arrays/objects
+  const parsed = JSON.parse(jsonMatch[0]) as any;
   return {
     name: String(parsed.name || ''),
     email: String(parsed.email || ''),
     phone: String(parsed.phone || ''),
     location: String(parsed.location || ''),
     title: String(parsed.title || ''),
-    skills: Array.isArray(parsed.skills) ? parsed.skills.map(String).filter(Boolean) : [],
+    summary: String(parsed.summary || ''),
+    skills: strArr(parsed.skills),
     experienceSummary: String(parsed.experienceSummary || ''),
-    experience: Array.isArray(parsed.experience) ? parsed.experience : [],
-    education: Array.isArray(parsed.education) ? parsed.education : [],
+    experience: objArr(parsed.experience),
+    projects: objArr(parsed.projects),
+    volunteer: objArr(parsed.volunteer),
+    education: objArr(parsed.education),
+    certifications: strArr(parsed.certifications),
   };
 };
 

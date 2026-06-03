@@ -68,7 +68,14 @@ const CoverLetterScreen = ({ navigation }: Props) => {
           candidateTitle: profile.title || '',
           candidateSkills: profile.skills,
           candidateBio: profile.bio || '',
-          candidateExperience: profile.experienceYears || '',
+          // Pack experience years + real experience highlights + projects so the
+          // letter can cite concrete work, not just a years figure.
+          candidateExperience: [
+            profile.experienceYears,
+            profile.experienceHighlights?.length ? 'Experience: ' + profile.experienceHighlights.slice(0, 5).join('; ') : '',
+            profile.projects?.length ? 'Projects: ' + profile.projects.slice(0, 4).join('; ') : '',
+            profile.volunteer?.length ? 'Volunteer: ' + profile.volunteer.slice(0, 3).join('; ') : '',
+          ].filter(Boolean).join('. '),
           contact: {
             email: profile.email || '',
             phone: profile.phone || '',

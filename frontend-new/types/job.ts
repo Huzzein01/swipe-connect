@@ -73,6 +73,9 @@ export interface Resume {
     }[];
     skills: string[];
     certifications?: string[];
+    summary?: string;
+    projects?: { name: string; description: string }[];
+    volunteer?: { role: string; organization: string; description: string }[];
   };
   lastUpdated: string;
 }

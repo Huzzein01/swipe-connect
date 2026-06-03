@@ -432,6 +432,59 @@ const ProfileScreen = ({ navigation }: Props) => {
           </Section>
         </View>
 
+        {/* ── Resume highlights (synced from uploaded resume) ───────────────── */}
+        {(profile.experienceHighlights.length > 0 || profile.projects.length > 0 || profile.volunteer.length > 0 || profile.certifications.length > 0) && (
+          <View style={styles.sectionWrap}>
+            <Section title="From your resume" icon="document-text-outline" color={theme.accent}>
+              {profile.experienceHighlights.length > 0 && (
+                <View style={{ marginBottom: Spacing.md }}>
+                  <Text style={[styles.fieldLabel, { color: theme.mutedForeground }]}>Experience</Text>
+                  {profile.experienceHighlights.slice(0, 5).map((e, i) => (
+                    <View key={i} style={styles.ideaRow}>
+                      <Ionicons name="briefcase-outline" size={14} color={theme.secondary} />
+                      <Text style={[styles.fieldValue, { color: theme.foreground, flex: 1 }]} numberOfLines={2}>{e}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {profile.projects.length > 0 && (
+                <View style={{ marginBottom: Spacing.md }}>
+                  <Text style={[styles.fieldLabel, { color: theme.mutedForeground }]}>Projects</Text>
+                  {profile.projects.slice(0, 5).map((p, i) => (
+                    <View key={i} style={styles.ideaRow}>
+                      <Ionicons name="cube-outline" size={14} color={theme.primary} />
+                      <Text style={[styles.fieldValue, { color: theme.foreground, flex: 1 }]} numberOfLines={2}>{p}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {profile.volunteer.length > 0 && (
+                <View style={{ marginBottom: Spacing.md }}>
+                  <Text style={[styles.fieldLabel, { color: theme.mutedForeground }]}>Volunteer work</Text>
+                  {profile.volunteer.slice(0, 4).map((v, i) => (
+                    <View key={i} style={styles.ideaRow}>
+                      <Ionicons name="heart-outline" size={14} color={theme.accent} />
+                      <Text style={[styles.fieldValue, { color: theme.foreground, flex: 1 }]} numberOfLines={2}>{v}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {profile.certifications.length > 0 && (
+                <View>
+                  <Text style={[styles.fieldLabel, { color: theme.mutedForeground }]}>Certifications</Text>
+                  <View style={styles.tagRow}>
+                    {profile.certifications.slice(0, 8).map((c) => (
+                      <View key={c} style={[styles.tag, { backgroundColor: `${theme.warning}14` }]}>
+                        <Text style={[styles.tagText, { color: theme.warning }]}>{c}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </Section>
+          </View>
+        )}
+
         {/* ── Job search ──────────────────────────────────────────────────── */}
         <View style={styles.sectionWrap}>
           <Section title="Job Search" icon="search-outline" color={theme.primary}>
@@ -544,6 +597,8 @@ const ProfileScreen = ({ navigation }: Props) => {
         {/* ── Quick links ──────────────────────────────────────────────────── */}
         <View style={styles.sectionWrap}>
           {[
+            { title: 'ATS Resume Scanner', sub: 'Score your resume & get fixes', icon: 'scan-outline' as const, color: theme.accent, screen: 'ATSScanner' },
+            { title: 'Resume Builder', sub: 'ATS templates + cover letters', icon: 'document-text-outline' as const, color: theme.primary, screen: 'ResumeBuilder' },
             { title: 'Job Preferences', sub: 'Filters, location, remote', icon: 'options-outline' as const, color: theme.primary, screen: 'JobFilters' },
             { title: 'Account Settings', sub: 'Theme, AI Tailor, privacy', icon: 'settings-outline' as const, color: theme.secondary, screen: 'Settings' },
             { title: 'Help & Support', sub: 'FAQ and feedback', icon: 'help-circle-outline' as const, color: theme.warning, screen: 'Help' },

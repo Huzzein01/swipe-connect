@@ -11,7 +11,7 @@ import { useUserProfile } from '../contexts/UserProfileContext';
 import { atsScanResume, ATSResult } from '../services/aiService';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
-type Props = { navigation: any };
+type Props = { navigation: any; route?: any };
 
 const readBase64 = async (asset: DocumentPicker.DocumentPickerAsset): Promise<{ base64: string; mimeType: string }> => {
   const mimeType = (asset as any).mimeType || 'application/octet-stream';
@@ -36,13 +36,13 @@ const readBase64 = async (asset: DocumentPicker.DocumentPickerAsset): Promise<{ 
 const scoreColor = (theme: any, score: number) =>
   score >= 80 ? theme.success : score >= 60 ? theme.warning : theme.destructive;
 
-const ATSScannerScreen = ({ navigation }: Props) => {
+const ATSScannerScreen = ({ navigation, route }: Props) => {
   const { theme } = useTheme();
   const { profile } = useUserProfile();
   const [targetRole, setTargetRole] = useState(profile.title || '');
   const [scanning, setScanning] = useState(false);
   const [fileName, setFileName] = useState('');
-  const [result, setResult] = useState<ATSResult | null>(null);
+  const [result, setResult] = useState<ATSResult | null>(route?.params?.result ?? null);
   const [error, setError] = useState('');
 
   const runScan = async (payload: { base64?: string; mimeType?: string; name?: string }) => {
