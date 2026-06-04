@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity,
   SafeAreaView, ScrollView, Image,
@@ -31,7 +31,7 @@ const HomeScreen = ({ navigation }: Props) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── Top bar ──────────────────────────────────────────────────── */}
         <View style={styles.topBar}>

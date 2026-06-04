@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
@@ -100,7 +100,7 @@ const NotificationsScreen = ({ navigation }: Props) => {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={true}
+          showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
         />
       )}

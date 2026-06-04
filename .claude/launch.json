@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "web", "--prefix", "frontend-new"],
+      "port": 8081
+    },
+    {
+      "name": "frontend-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["frontend-new/serve-preview.cjs"],
+      "port": 8092,
+      "autoPort": true
+    },
+    {
+      "name": "football-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [".claude/start-football-server.js"],
+      "port": 4173
+    }
+  ]
+}

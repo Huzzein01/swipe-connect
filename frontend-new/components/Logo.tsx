@@ -1,87 +1,51 @@
 import React from 'react';
-import Svg, {
-  Defs,
-  LinearGradient,
-  Stop,
-  G,
-  Rect,
-  Path,
-  Line,
-  Polygon,
-} from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Stop, G, Circle, Path, Rect } from 'react-native-svg';
 
 interface LogoProps {
   size?: number;
   color?: string;
 }
 
+/**
+ * SwipeConnect logo — two person silhouettes connected by an arc, representing
+ * professional networking. Replaces the old briefcase-and-heart mark.
+ */
 const Logo: React.FC<LogoProps> = ({ size = 40, color = '#FF006E' }) => {
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
       <Defs>
-        <LinearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <Stop offset="0%" stopColor={color} stopOpacity={1} />
-          <Stop offset="100%" stopColor={color} stopOpacity={0.7} />
-        </LinearGradient>
-        <LinearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <Stop offset="0%" stopColor="#FF006E" />
-          <Stop offset="100%" stopColor="#FF1493" />
+        <LinearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor={color} stopOpacity="1" />
+          <Stop offset="100%" stopColor={color} stopOpacity="0.65" />
         </LinearGradient>
       </Defs>
 
-      <G transform="translate(50, 50)">
-        {/* Briefcase body */}
-        <Rect
-          x={-24}
-          y={-16}
-          width={48}
-          height={32}
-          rx={4}
-          fill="url(#logoGradient)"
-          opacity={0.9}
-        />
+      {/* Soft background square */}
+      <Rect x="3" y="3" width="94" height="94" rx="22" fill={color} opacity="0.08" />
 
-        {/* Briefcase handle */}
-        <Path
-          d="M -16 -16 Q -16 -28 0 -28 Q 16 -28 16 -16"
-          stroke={color}
-          strokeWidth={3}
-          fill="none"
-          strokeLinecap="round"
-        />
+      {/* ── Left person ─────────────────────────────────── */}
+      {/* Head */}
+      <Circle cx="28" cy="30" r="12" fill="url(#lg)" />
+      {/* Shoulders / body */}
+      <Path d="M6 76 Q6 54 28 54 Q50 54 50 76" fill="url(#lg)" />
 
-        {/* Briefcase detail line */}
-        <Line
-          x1={-24}
-          y1={-4}
-          x2={24}
-          y2={-4}
-          stroke="white"
-          strokeWidth={1.5}
-          opacity={0.6}
-        />
+      {/* ── Right person ────────────────────────────────── */}
+      {/* Head */}
+      <Circle cx="72" cy="30" r="12" fill="url(#lg)" />
+      {/* Shoulders / body */}
+      <Path d="M50 76 Q50 54 72 54 Q94 54 94 76" fill="url(#lg)" />
 
-        {/* Swipe arrow shaft */}
-        <Line
-          x1={28}
-          y1={0}
-          x2={44}
-          y2={0}
-          stroke={color}
-          strokeWidth={2.5}
-          strokeLinecap="round"
-        />
-        {/* Swipe arrow head */}
-        <Polygon points="44,0 40,3 40,-3" fill={color} />
+      {/* ── Connection arc between the two people ───────── */}
+      <Path
+        d="M 36 23 Q 50 8 64 23"
+        stroke={color}
+        strokeWidth="4.5"
+        strokeLinecap="round"
+        fill="none"
+      />
 
-        {/* Heart accent */}
-        <G transform="translate(-28, -8) scale(0.7)">
-          <Path
-            d="M 12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-            fill="url(#heartGradient)"
-          />
-        </G>
-      </G>
+      {/* Connection dot at the top of the arc */}
+      <Circle cx="50" cy="11" r="5" fill={color} />
     </Svg>
   );
 };

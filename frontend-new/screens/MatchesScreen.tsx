@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   StyleSheet, View, Text, FlatList, TouchableOpacity, SafeAreaView,
 } from 'react-native';
@@ -128,7 +128,7 @@ const NetworkScreen = ({ navigation }: Props) => {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={true}
+          showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
         />
       )}

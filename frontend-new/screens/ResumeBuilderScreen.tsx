@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   SafeAreaView, ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View, Modal, ActivityIndicator,
@@ -325,7 +325,7 @@ ${data.certifications ? 'CERTIFICATIONS\n' + data.certifications : ''}
 
       {/* Step: Template */}
       {step === 'template' && (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Already have a resume? Go straight to the ATS scanner */}
           <TouchableOpacity
             style={[styles.atsEntry, { backgroundColor: `${theme.primary}10`, borderColor: `${theme.primary}30` }]}
@@ -373,7 +373,7 @@ ${data.certifications ? 'CERTIFICATIONS\n' + data.certifications : ''}
 
       {/* Step: Build */}
       {step === 'build' && (
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={true}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <Field label="Full name *" value={data.name} onChange={set('name')} placeholder="Jane Smith" />
           <Field label="Email *" value={data.email} onChange={set('email')} placeholder="jane@example.com" />
           <Field label="Phone" value={data.phone} onChange={set('phone')} placeholder="+1 (312) 555-0000" />
@@ -402,7 +402,7 @@ ${data.certifications ? 'CERTIFICATIONS\n' + data.certifications : ''}
 
       {/* Step: Preview */}
       {step === 'preview' && (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={[styles.previewBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={[styles.previewBanner, { backgroundColor: selected.accentColor }]}>
               <Ionicons name="document-text" size={18} color="#fff" />

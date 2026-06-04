@@ -1,0 +1,112 @@
+{
+  "updatedAt": "2026-05-29T23:21:53.408Z",
+  "provider": "The Odds API",
+  "enabled": true,
+  "cached": false,
+  "requestedSports": [
+    "soccer_spain_segunda_division",
+    "soccer_uefa_champs_league",
+    "soccer_belgium_first_div",
+    "soccer_norway_eliteserien",
+    "soccer_sweden_allsvenskan",
+    "soccer_finland_veikkausliiga",
+    "soccer_fifa_world_cup"
+  ],
+  "unavailableSports": [
+    "soccer_epl",
+    "soccer_spain_la_liga",
+    "soccer_germany_bundesliga",
+    "soccer_france_ligue_one",
+    "soccer_italy_serie_a",
+    "soccer_italy_serie_b",
+    "soccer_uefa_europa_league",
+    "soccer_uefa_europa_conference_league",
+    "soccer_netherlands_eredivisie",
+    "soccer_portugal_primeira_liga",
+    "soccer_spl",
+    "soccer_turkey_super_league",
+    "soccer_league_of_ireland"
+  ],
+  "eventCount": 100,
+  "club": {
+    "checked": 6,
+    "updated": 6
+  },
+  "international": {
+    "updated": 0,
+    "fixtures": []
+  },
+  "quota": [
+    {
+      "sportKey": "soccer_spain_segunda_division",
+      "quota": {
+        "remaining": "321",
+        "used": "179",
+        "last": "1"
+      },
+      "skipped": false,
+      "reason": ""
+    },
+    {
+      "sportKey": "soccer_uefa_champs_league",
+      "quota": {
+        "remaining": "320",
+        "used": "180",
+        "last": "1"
+      },
+      "skipped": false,
+      "reason": ""
+    },
+    {
+      "sportKey": "soccer_belgium_first_div",
+      "quota": {
+        "remaining": "319",
+        "used": "181",
+        "last": "1"
+      },
+      "skipped": false,
+      "reason": ""
+    },
+    {
+      "sportKey": "soccer_norway_eliteserien",
+      "quota": {
+        "remaining": "318",
+        "used": "182",
+        "last": "1"
+      },
+      "skipped": false,
+      "reason": ""
+    },
+    {
+      "sportKey": "soccer_sweden_allsvenskan",
+      "quota": {
+        "remaining": "317",
+        "used": "183",
+        "last": "1"
+      },
+      "skipped": false,
+      "reason": ""
+    },
+    {
+      "sportKey": "soccer_finland_veikkausliiga",
+      "quota": {
+        "remaining": "316",
+        "used": "184",
+        "last": "1"
+      },
+      "skipped": false,
+      "reason": ""
+    },
+    {
+      "sportKey": "soccer_fifa_world_cup",
+      "quota": {
+        "remaining": "315",
+        "used": "185",
+        "last": "1"
+      },
+      "skipped": false,
+      "reason": ""
+    }
+  ],
+  "errors": []
+}

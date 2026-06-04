@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+﻿import React, { useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -220,7 +220,7 @@ const ProfileScreen = ({ navigation }: Props) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
               {editModal === 'identity' && (
                 <>
                   <Field label="Full name" value={draft.displayName || ''} onChange={(v) => setD({ displayName: v })} placeholder="Your full name" />
@@ -315,7 +315,7 @@ const ProfileScreen = ({ navigation }: Props) => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={true}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
       >

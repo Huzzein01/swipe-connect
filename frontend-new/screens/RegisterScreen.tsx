@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -86,7 +86,7 @@ const RegisterScreen = ({ navigation }: Props) => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <KeyboardDismissWrapper>
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={styles.logoRow}>
               <Logo size={56} color={theme.primary} />
             </View>

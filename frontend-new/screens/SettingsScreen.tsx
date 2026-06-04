@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -125,7 +125,7 @@ const SettingsScreen = ({ navigation }: { navigation?: any }) => {
       <ScrollView
         ref={scrollRef}
         style={[styles.scrollView, Platform.OS === 'web' && styles.webScrollView]}
-        showsVerticalScrollIndicator={true}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
         scrollEnabled

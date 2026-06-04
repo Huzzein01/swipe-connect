@@ -285,10 +285,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await clearPersistedSession();
       if (auth) {
-        await signOut(auth);
+        // signOut may throw if no Firebase session is active (e.g. preview users).
+        // Swallow the error so the user is always logged out of the app.
+        try { await signOut(auth); } catch { /* no firebase session — ok */ }
       }
-      setUser(null);
     } finally {
+      // Always clear user state, even if Firebase throws
+      setUser(null);
       setAuthActionLoading(false);
     }
   };

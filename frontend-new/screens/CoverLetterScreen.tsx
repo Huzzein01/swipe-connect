@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   SafeAreaView, ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View, ActivityIndicator, Share, Platform,
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUserProfile } from '../contexts/UserProfileContext';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
+import { downloadCoverLetter } from '../utils/downloadDocument';
 
 type Props = { navigation: any };
 
@@ -148,7 +149,7 @@ ${profile.linkedinUrl || ''}`.trim();
       </View>
 
       {step === 'form' ? (
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={true}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={[styles.infoBanner, { backgroundColor: `${theme.primary}10`, borderColor: `${theme.primary}25` }]}>
             <Ionicons name="sparkles-outline" size={18} color={theme.primary} />
             <Text style={[styles.infoText, { color: theme.foreground }]}>
@@ -204,7 +205,7 @@ ${profile.linkedinUrl || ''}`.trim();
           </TouchableOpacity>
         </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Result info */}
           <View style={[styles.resultMeta, { backgroundColor: `${theme.primary}10`, borderColor: `${theme.primary}25` }]}>
             <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
@@ -227,6 +228,14 @@ ${profile.linkedinUrl || ''}`.trim();
             <TouchableOpacity style={[styles.shareBtn, { borderColor: theme.border }]} onPress={handleShare} activeOpacity={0.8}>
               <Ionicons name="share-outline" size={18} color={theme.foreground} />
               <Text style={[{ fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: theme.foreground }]}>Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.shareBtn, { borderColor: theme.accent }]}
+              onPress={() => downloadCoverLetter(letter, jobTitle, company)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="download-outline" size={18} color={theme.accent} />
+              <Text style={[{ fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: theme.accent }]}>Download</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.copyBtn, { backgroundColor: theme.primary }]} onPress={handleShare} activeOpacity={0.85}>
               <Ionicons name="copy-outline" size={18} color="#fff" />

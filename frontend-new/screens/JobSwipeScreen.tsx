@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -35,6 +35,32 @@ import { jobService } from '../services/jobService';
 import { detailSectionsForJob, summarizeDescription } from '../services/simulatedJobs';
 import { Job } from '../types/job';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
+import { downloadResume } from '../utils/downloadDocument';
+import { useUserProfile } from '../contexts/UserProfileContext';
+
+/**
+ * Detect the ATS platform from an application URL.
+ * Returns a short label ("Greenhouse", "Workday", …) or null if unknown.
+ *
+ * Note: LinkedIn Easy Apply is intentionally excluded — their ToS prohibits
+ * automated applications. Our feed doesn't source from LinkedIn, but we guard
+ * here as a safety net.
+ */
+const detectAts = (url = ''): string | null => {
+  if (/linkedin\.com/i.test(url)) return null; // excluded — ToS prohibits auto-apply
+  if (/myworkdayjobs\.com|workday\.com/i.test(url)) return 'Workday';
+  if (/greenhouse\.io/i.test(url)) return 'Greenhouse';
+  if (/lever\.co/i.test(url)) return 'Lever';
+  if (/ashbyhq\.com/i.test(url)) return 'Ashby';
+  if (/bamboohr\.com/i.test(url)) return 'BambooHR';
+  if (/smartrecruiters\.com/i.test(url)) return 'SmartRecruiters';
+  if (/workable\.com/i.test(url)) return 'Workable';
+  if (/teamtailor\.com/i.test(url)) return 'Teamtailor';
+  if (/taleo\.net/i.test(url)) return 'Taleo';
+  if (/icims\.com/i.test(url)) return 'iCIMS';
+  if (/jobvite\.com/i.test(url)) return 'Jobvite';
+  return null;
+};
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
@@ -50,6 +76,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
   const { addMatch } = useNetwork();
   const { aiTailorEnabled } = usePremium();
   const { addNotification } = useNotifications();
+  const { profile } = useUserProfile();
 
   const [mode, setMode] = useState<DeckMode>('jobs');
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -405,6 +432,13 @@ const JobSwipeScreen = ({ navigation }: Props) => {
           <Ionicons name={job.remote ? 'globe-outline' : 'business-outline'} size={13} color={theme.mutedForeground} />
           <Text style={[styles.pillText, { color: theme.foreground }]}>{job.workStyle || (job.remote ? 'Remote' : 'Hybrid')}</Text>
         </View>
+        {/* ATS platform badge — helps users know what format to prepare */}
+        {(() => { const ats = detectAts(job.applicationUrl); return ats ? (
+          <View style={[styles.pill, { backgroundColor: `${theme.accent}12` }]}>
+            <Ionicons name="shield-checkmark-outline" size={13} color={theme.accent} />
+            <Text style={[styles.pillText, { color: theme.accent }]}>{ats}</Text>
+          </View>
+        ) : null; })()}
       </View>
 
       <View style={[styles.summaryBox, { backgroundColor: `${theme.primary}08`, borderColor: `${theme.primary}22` }]}>
@@ -536,7 +570,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
       <ScrollView
         style={styles.screenScroll}
         contentContainerStyle={styles.screenScrollContent}
-        showsVerticalScrollIndicator={true}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
       {/* Mode toggle + filter button (captions removed) */}
@@ -709,7 +743,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
               </TouchableOpacity>
             </View>
             {detailSections && (
-              <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
                 {[
                   { title: 'Overview', content: detailSections.overview },
                 ].map(({ title, content }) => (
@@ -755,7 +789,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
                 <Ionicons name="close" size={18} color={theme.foreground} />
               </TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
               {tailorModal?.result.changes.slice(0, 5).map((c, i) => (
                 <View key={i} style={[styles.changeCard, { borderColor: theme.border }]}>
                   <Text style={[styles.changeSection, { color: theme.primary }]}>{c.section}</Text>
@@ -769,6 +803,37 @@ const JobSwipeScreen = ({ navigation }: Props) => {
                   {tailorModal?.result.tailoredText}
                 </Text>
               </View>
+
+              {/* ATS-specific download nudge */}
+              {tailorModal && detectAts(tailorModal.job.applicationUrl) && (
+                <View style={[styles.atsHint, { backgroundColor: `${theme.accent}10`, borderColor: `${theme.accent}30` }]}>
+                  <Ionicons name="shield-checkmark-outline" size={16} color={theme.accent} />
+                  <Text style={[styles.atsHintText, { color: theme.foreground }]}>
+                    This role uses <Text style={{ fontWeight: '700', color: theme.accent }}>{detectAts(tailorModal.job.applicationUrl)}</Text>.
+                    Download your tailored resume to upload directly to their form.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => downloadResume({
+                      name: profile.displayName || 'Resume',
+                      email: profile.email,
+                      phone: profile.phone,
+                      location: profile.location,
+                      title: profile.title,
+                      bio: profile.bio,
+                      skills: profile.skills,
+                      experienceHighlights: profile.experienceHighlights,
+                      projects: profile.projects,
+                      volunteer: profile.volunteer,
+                      certifications: profile.certifications,
+                    })}
+                    style={[styles.atsDownloadBtn, { backgroundColor: theme.accent }]}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="download-outline" size={14} color="#fff" />
+                    <Text style={styles.atsDownloadText}>Download</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </ScrollView>
             {/* Confirm / Skip buttons */}
             <View style={styles.tailorActions}>
@@ -816,7 +881,7 @@ const JobSwipeScreen = ({ navigation }: Props) => {
                     <Ionicons name="close" size={20} color={theme.foreground} />
                   </TouchableOpacity>
                 </View>
-                <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing['3xl'] }}>
                   <Text style={[styles.detailSection, { color: theme.accent }]}>About</Text>
                   <Text style={[styles.detailBody, { color: theme.foreground }]}>{detailProfile.bio}</Text>
                   <Text style={[styles.detailSection, { color: theme.accent }]}>Looking For</Text>
@@ -941,6 +1006,10 @@ const styles = StyleSheet.create({
   tailorSkipText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
   tailorConfirmBtn: { flex: 2, height: 48, borderRadius: BorderRadius.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
   tailorConfirmText: { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  atsHint: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: BorderRadius.xl, padding: Spacing.md, marginTop: Spacing.md },
+  atsHintText: { flex: 1, fontSize: FontSize.xs, lineHeight: 17 },
+  atsDownloadBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: BorderRadius.lg, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  atsDownloadText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
 });
 
 export default JobSwipeScreen;

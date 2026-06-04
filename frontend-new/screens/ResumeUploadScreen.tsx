@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -19,6 +19,7 @@ import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import { Resume } from '../types/job';
 import { parseResumeText, parseResumeFileUpload, atsScanResume, ParsedResumeAI, ATSResult } from '../services/aiService';
+import { downloadResume } from '../utils/downloadDocument';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
 type ResumeUploadScreenProps = {
@@ -287,12 +288,13 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
     setResume(savedResume);
   }, [savedResume]);
 
-  // Merge parsed resume fields into UserProfile — only fills empty fields,
-  // always merges skills (union, no duplicates).
-  const isBlankish = (value?: string) => {
-    const normalized = (value || '').trim().toLowerCase();
-    return !normalized || ['your name', 'preview user', 'add your professional title', 'professional'].includes(normalized);
-  };
+  // ── Resume → profile sync helpers ──────────────────────────────────────────
+  // Placeholder strings that should ALWAYS be overwritten by real resume data.
+  const PLACEHOLDER_VALUES = new Set([
+    'your name', 'preview user', 'add your professional title', 'professional',
+    'preview@swipeconnect.app', '',
+  ]);
+  const isPlaceholder = (v?: string) => PLACEHOLDER_VALUES.has((v || '').trim().toLowerCase());
 
   const mergeUnique = (current: string[], incoming: string[]) => {
     const seen = new Set(current.map((item) => item.toLowerCase()));
@@ -321,6 +323,16 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
     return industries.length ? industries : ['Technology'];
   };
 
+  /**
+   * Sync ALL parsed resume data into the user's profile.
+   *
+   * Strategy:
+   *  - Contact fields (name, email, phone, location): resume ALWAYS wins if it
+   *    has a real value — these are the ground-truth from the document.
+   *  - Professional fields (title, company, bio): resume wins unless the user
+   *    has already set something non-placeholder.
+   *  - Arrays (skills, projects, etc.): always union-merge so nothing is lost.
+   */
   const syncResumeToProfile = async (parsed: Resume, summary?: string) => {
     const d = parsed.parsedData;
     const latest = d.experience?.[0];
@@ -330,22 +342,34 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
     const inferredExperience = inferExperienceYears(latest?.startDate);
     const patch: Record<string, any> = {};
 
-    if (isBlankish(profile.displayName) && d.name) patch.displayName = d.name;
-    if (!profile.email && d.email) patch.email = d.email;
-    if (!profile.phone && d.phone) patch.phone = d.phone;
-    if (!profile.location && d.location?.city) {
-      patch.location = `${d.location.city}, ${d.location.state || ''}`.trim().replace(/,$/, '');
+    // ── Identity & contact (resume is ground-truth; always overwrite placeholders
+    //    and fill blanks; also overwrite if current value equals auth-derived default)
+    if (d.name && (isPlaceholder(profile.displayName) || !profile.displayName)) {
+      patch.displayName = d.name;
     }
-    if (isBlankish(profile.title) && role) patch.title = role;
-    if (!profile.currentCompany && company && company !== 'Recent Company') patch.currentCompany = company;
-    if ((!profile.experienceYears || profile.experienceYears === '3-5 years') && inferredExperience) {
-      patch.experienceYears = inferredExperience;
+    // Email: resume email always wins (more specific than Firebase/preview email)
+    if (d.email && d.email !== 'preview@swipeconnect.app') {
+      patch.email = d.email;
     }
-    // Bio ← the resume's own Summary/Objective section (preferred), else AI summary
-    const resumeSummary = (d as any).summary || summary || latest?.description || '';
-    if (!profile.bio && resumeSummary) patch.bio = resumeSummary;
+    // Phone: always set from resume if present
+    if (d.phone) patch.phone = d.phone;
 
-    // Always merge skills — union of existing + newly extracted
+    // Location: parse "city, state" or full address from resume
+    if (d.location?.city && d.location.city !== 'Remote') {
+      const loc = [d.location.city, d.location.state].filter(Boolean).join(', ').replace(/,\s*$/, '');
+      patch.location = loc;
+    }
+
+    // ── Professional
+    if (role && (isPlaceholder(profile.title) || !profile.title)) patch.title = role;
+    if (company && company !== 'Recent Company' && !profile.currentCompany) patch.currentCompany = company;
+    if (inferredExperience) patch.experienceYears = inferredExperience;
+
+    // Bio ← resume's own Summary/Objective section is highest fidelity
+    const resumeSummary = (d as any).summary || summary || '';
+    if (resumeSummary && (isPlaceholder(profile.bio) || !profile.bio)) patch.bio = resumeSummary;
+
+    // ── Skills & industries (union-merge, never discard existing)
     if (skills.length) {
       patch.skills = mergeUnique(profile.skills, skills);
       patch.industries = mergeUnique(profile.industries, inferIndustries(skills));
@@ -359,33 +383,32 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
     if (skills.length && !profile.networkingGoals) {
       patch.networkingGoals = `Open to collaborating on projects involving ${skills.slice(0, 3).join(', ')}.`;
     }
-
     if (skills.length && profile.projectIdeas.length === 0) {
       patch.projectIdeas = [`Build a product using ${skills.slice(0, 2).join(' and ')}`];
     }
 
-    // ── Sync the rest of the resume (projects, volunteer, certifications, experience)
+    // ── Resume sections: always overwrite with latest parsed data
     const projects = ((d as any).projects || []) as { name: string; description: string }[];
-    if (projects.length && profile.projects.length === 0) {
+    if (projects.length) {
       patch.projects = projects.map((p) => (p.description ? `${p.name} — ${p.description}` : p.name)).filter(Boolean);
     }
     const volunteer = ((d as any).volunteer || []) as { role: string; organization: string; description: string }[];
-    if (volunteer.length && profile.volunteer.length === 0) {
-      patch.volunteer = volunteer.map((v) => `${v.role}${v.organization ? ' at ' + v.organization : ''}${v.description ? ' — ' + v.description : ''}`).filter(Boolean);
+    if (volunteer.length) {
+      patch.volunteer = volunteer.map((v) =>
+        `${v.role}${v.organization ? ' at ' + v.organization : ''}${v.description ? ' — ' + v.description : ''}`
+      ).filter(Boolean);
     }
-    if (d.certifications?.length && profile.certifications.length === 0) {
+    if (d.certifications?.length) {
       patch.certifications = mergeUnique(profile.certifications, d.certifications);
     }
-    if (d.experience?.length && profile.experienceHighlights.length === 0) {
+    if (d.experience?.length) {
       patch.experienceHighlights = d.experience
         .map((e) => `${e.title}${e.company ? ' at ' + e.company : ''}${e.description ? ' — ' + e.description : ''}`)
         .filter(Boolean)
         .slice(0, 8);
     }
 
-    if (Object.keys(patch).length > 0) {
-      await updateProfile(patch);
-    }
+    if (Object.keys(patch).length > 0) await updateProfile(patch);
   };
 
   const pickDocument = async () => {
@@ -480,7 +503,7 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={true}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
       >
@@ -635,18 +658,47 @@ const ResumeUploadScreen = ({ navigation }: ResumeUploadScreenProps) => {
                 </TouchableOpacity>
               )}
 
-              {/* Save Button */}
-              <TouchableOpacity
-                style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                onPress={handleSave}
-                disabled={isLoading}
-                activeOpacity={0.85}
-              >
-                <Text style={[styles.saveButtonText, { color: theme.primaryForeground }]}>
-                  Save Resume
-                </Text>
-                <Ionicons name="checkmark" size={18} color={theme.primaryForeground} />
-              </TouchableOpacity>
+              {/* Download + Save */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: Spacing.lg }}>
+                <TouchableOpacity
+                  style={[styles.saveButton, { flex: 1, backgroundColor: theme.card, borderWidth: 1, borderColor: theme.accent }]}
+                  onPress={() => downloadResume({
+                    name: resume.parsedData.name,
+                    email: resume.parsedData.email,
+                    phone: resume.parsedData.phone,
+                    location: resume.parsedData.location
+                      ? `${resume.parsedData.location.city}, ${resume.parsedData.location.state}`.replace(/,\s*$/, '')
+                      : undefined,
+                    title: (resume.parsedData as any).title,
+                    bio: (resume.parsedData as any).summary || '',
+                    skills: resume.parsedData.skills,
+                    certifications: resume.parsedData.certifications,
+                    projects: ((resume.parsedData as any).projects || []).map(
+                      (p: any) => `${p.name}${p.description ? ' — ' + p.description : ''}`
+                    ),
+                    volunteer: ((resume.parsedData as any).volunteer || []).map(
+                      (v: any) => `${v.role}${v.organization ? ' at ' + v.organization : ''}${v.description ? ' — ' + v.description : ''}`
+                    ),
+                    experienceHighlights: resume.parsedData.experience.map(
+                      (e) => `${e.title}${e.company ? ' at ' + e.company : ''}${e.description ? ' — ' + e.description : ''}`
+                    ),
+                  })}
+                  disabled={isLoading}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="download-outline" size={18} color={theme.accent} />
+                  <Text style={[styles.saveButtonText, { color: theme.accent }]}>Download</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveButton, { flex: 1, backgroundColor: theme.primary }]}
+                  onPress={handleSave}
+                  disabled={isLoading}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.saveButtonText, { color: theme.primaryForeground }]}>Save</Text>
+                  <Ionicons name="checkmark" size={18} color={theme.primaryForeground} />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -45,7 +45,7 @@ const PrivacyPolicyScreen = ({ navigation }: Props) => {
         <Text style={[styles.headerTitle, { color: theme.foreground }]}>Privacy Policy</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={true}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={[styles.updated, { color: theme.mutedForeground }]}>Last updated: {LAST_UPDATED}</Text>
 
         <Section title="1. Introduction">
